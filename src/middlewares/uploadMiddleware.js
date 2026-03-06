@@ -20,10 +20,20 @@ const storage = multer.diskStorage({
 });
 
 const fileFilter = (req, file, cb) => {
-    if (file.mimetype.startsWith('video/')) {
-        cb(null, true);
+    if (file.fieldname === 'video') {
+        if (file.mimetype.startsWith('video/')) {
+            cb(null, true);
+        } else {
+            cb(new Error('Only video files are allowed for the video field!'), false);
+        }
+    } else if (file.fieldname === 'cover') {
+        if (file.mimetype.startsWith('image/')) {
+            cb(null, true);
+        } else {
+            cb(new Error('Only image files are allowed for the cover field!'), false);
+        }
     } else {
-        cb(new Error('Only video files are allowed!'), false);
+        cb(new Error('Unexpected field'), false);
     }
 };
 
@@ -33,6 +43,9 @@ const upload = multer({
     limits: {
         fileSize: 500 * 1024 * 1024 // 500 MB limit
     }
-});
+}).fields([
+    { name: 'video', maxCount: 1 },
+    { name: 'cover', maxCount: 1 }
+]);
 
 module.exports = upload;

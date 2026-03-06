@@ -4,32 +4,41 @@ const pool = require('../config/db');
 
 exports.uploadMedia = async (req, res) => {
     try {
-        if (!req.file) {
-            return res.status(400).json({ success: false, message: 'No media file provided.' });
+        if (!req.files || !req.files.video) {
+            return res.status(400).json({ success: false, message: 'No media video provided.' });
         }
+
+        const videoFile = req.files.video[0];
+        const coverFile = req.files.cover ? req.files.cover[0] : null;
 
         const { title, description, status } = req.body;
         const uploaderId = req.user.id;
 
+        // Simulate backend processing time (e.g. standardizing formatting, encoding, etc.)
+        // This takes ~3 seconds to allow frontend to show 'Processing' state explicitly.
+        await new Promise(resolve => setTimeout(resolve, 3000));
+
         const mediaData = {
-            title: title || req.file.originalname,
+            title: title || videoFile.originalname,
             description: description || '',
-            filename: req.file.filename,
-            original_name: req.file.originalname,
-            mimetype: req.file.mimetype,
-            size: req.file.size,
+            filename: videoFile.filename,
+            original_name: videoFile.originalname,
+            cover_filename: coverFile ? coverFile.filename : null,
+            mimetype: videoFile.mimetype,
+            size: videoFile.size,
             status: status || 'private',
             uploaded_by: uploaderId
         };
 
         const [result] = await pool.query(
-            `INSERT INTO media (title, description, filename, original_name, mimetype, size, status, uploaded_by)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            `INSERT INTO media (title, description, filename, original_name, cover_filename, mimetype, size, status, uploaded_by)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 mediaData.title,
                 mediaData.description,
                 mediaData.filename,
                 mediaData.original_name,
+                mediaData.cover_filename,
                 mediaData.mimetype,
                 mediaData.size,
                 mediaData.status,
@@ -55,7 +64,7 @@ exports.listMedia = async (req, res) => {
         const offset = (page - 1) * limit;
 
         const [mediaItems] = await pool.query(
-            `SELECT m.id, m.title, m.description, m.status, m.created_at, u.username as uploader 
+            `SELECT m.id, m.title, m.description, m.status, m.cover_filename, m.created_at, u.username as uploader 
              FROM media m 
              LEFT JOIN users u ON m.uploaded_by = u.id 
              ORDER BY m.created_at DESC 
@@ -154,5 +163,36 @@ exports.streamMedia = async (req, res) => {
     } catch (error) {
         console.error("Stream error:", error);
         res.status(500).json({ success: false, message: 'Error streaming video.' });
+    }
+};
+
+exports.streamCover = async (req, res) => {
+    try {
+        const mediaId = req.params.id;
+        const [mediaRows] = await pool.query('SELECT cover_filename, status FROM media WHERE id = ?', [mediaId]);
+
+        if (mediaRows.length === 0 || !mediaRows[0].cover_filename) {
+            return res.status(404).json({ success: false, message: 'Cover not found.' });
+        }
+
+        const media = mediaRows[0];
+
+        // Access control check for cover mirroring video logic
+        if (media.status === 'private') {
+            if (!req.user) {
+                return res.status(403).json({ success: false, message: 'Private cover requires authentication token.' });
+            }
+        }
+
+        const coverPath = path.join(__dirname, '../../uploads', media.cover_filename);
+
+        if (!fs.existsSync(coverPath)) {
+            return res.status(404).json({ success: false, message: 'Cover file missing on server.' });
+        }
+
+        res.sendFile(coverPath);
+    } catch (error) {
+        console.error("Cover fetch error:", error);
+        res.status(500).json({ success: false, message: 'Error fetching cover.' });
     }
 };

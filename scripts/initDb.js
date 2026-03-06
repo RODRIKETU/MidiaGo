@@ -42,6 +42,7 @@ async function initDB() {
                 description TEXT,
                 filename VARCHAR(255) NOT NULL,
                 original_name VARCHAR(255) NOT NULL,
+                cover_filename VARCHAR(255) NULL,
                 mimetype VARCHAR(100) NOT NULL,
                 size BIGINT NOT NULL,
                 status ENUM('public', 'private') DEFAULT 'private',

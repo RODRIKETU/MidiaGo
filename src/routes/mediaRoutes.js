@@ -29,6 +29,9 @@ const { verifyToken } = require('../middlewares/authMiddleware');
  *               video:
  *                 type: string
  *                 format: binary
+ *               cover:
+ *                 type: string
+ *                 format: binary
  *               title:
  *                 type: string
  *               description:
@@ -42,7 +45,7 @@ const { verifyToken } = require('../middlewares/authMiddleware');
  *       400:
  *         description: Invalid input or missing file
  */
-router.post('/upload', verifyToken, upload.single('video'), mediaController.uploadMedia);
+router.post('/upload', verifyToken, upload, mediaController.uploadMedia);
 
 /**
  * @swagger
@@ -87,5 +90,31 @@ router.get('/list', mediaController.listMedia);
  *         description: Media not found
  */
 router.get('/stream/:id', verifyToken, mediaController.streamMedia);
+
+/**
+ * @swagger
+ * /api/media/stream/cover/{id}:
+ *   get:
+ *     summary: Retrieve cover image
+ *     tags: [Media]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: token
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Cover retrieved
+ *       403:
+ *         description: Forbidden
+ *       404:
+ *         description: Cover not found
+ */
+router.get('/stream/cover/:id', verifyToken, mediaController.streamCover);
 
 module.exports = router;

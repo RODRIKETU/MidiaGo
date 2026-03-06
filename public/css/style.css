@@ -615,8 +615,8 @@ body {
 .progress-bar-container {
     margin-top: 1.5rem;
     display: flex;
-    align-items: center;
-    gap: 1rem;
+    flex-direction: column;
+    width: 100%;
 }
 
 .progress-bar {
@@ -640,10 +640,23 @@ body {
     transition: width 0.3s ease;
 }
 
+.progress-details {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    margin-bottom: 0.5rem;
+}
+
+#uploadStatusText {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--primary);
+}
+
 #uploadProgressText {
     font-size: 0.875rem;
     color: var(--text-secondary);
-    min-width: 40px;
     text-align: right;
 }
 
@@ -661,10 +674,35 @@ body {
     position: relative;
 }
 
+.video-wrapper {
+    position: relative;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+}
+
 .video-element {
     width: 100%;
     max-height: 70vh;
     outline: none;
+    z-index: 1;
+}
+
+.protective-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 5;
+    background: transparent;
+    pointer-events: auto; /* Traps right clicks, but prevents standard controls from working if not careful. 
+                             We'll use a trick: overlay only bottom edge / right click interceptor in JS
+                             but simplest purely CSS protection is covering 90% of the video. */
+}
+/* Allow clicks on bottom controls (approx bottom 50px) */
+.protective-overlay {
+    height: calc(100% - 50px);
 }
 
 .player-info {

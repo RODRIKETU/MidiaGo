@@ -120,16 +120,28 @@
 
                     <div class="input-group">
                         <label>Arquivo de Vídeo *</label>
-                        <div class="file-drop-area" id="dropArea">
-                            <ion-icon name="cloud-upload-outline"></ion-icon>
-                            <span class="file-message">Arraste seu arquivo de vídeo ou clique para escolher</span>
+                        <div class="file-drop-area" id="dropAreaVideo">
+                            <ion-icon name="videocam-outline"></ion-icon>
+                            <span class="file-message" id="videoFileMessage">Arraste seu arquivo de vídeo ou clique para escolher</span>
                             <input class="file-input" type="file" id="videoFile" name="video" accept="video/mp4,video/mkv,video/webm" required>
                         </div>
                     </div>
 
+                    <div class="input-group">
+                        <label>Capa do Vídeo (Opcional)</label>
+                        <div class="file-drop-area" id="dropAreaCover">
+                            <ion-icon name="image-outline"></ion-icon>
+                            <span class="file-message" id="coverFileMessage">Arraste a capa (imagem) ou clique para escolher</span>
+                            <input class="file-input" type="file" id="coverFile" name="cover" accept="image/jpeg,image/png,image/webp">
+                        </div>
+                    </div>
+
                     <div id="uploadProgressContainer" class="progress-bar-container hidden">
+                        <div class="progress-details">
+                            <span id="uploadStatusText">Enviando Arquivos...</span>
+                            <span id="uploadProgressText">0%</span>
+                        </div>
                         <div id="uploadProgressBar" class="progress-bar"></div>
-                        <span id="uploadProgressText">0%</span>
                     </div>
 
                     <div class="modal-footer">
@@ -192,9 +204,13 @@
             <div class="player-body">
                 <!-- ControlsList nodownload prevents native download button -->
                 <!-- Use oncontextmenu to reduce saving capability by clicking right button -->
-                <video id="videoPlayer" controls controlsList="nodownload" oncontextmenu="return false;" preload="none" class="video-element">
-                    Seu navegador não suporta HTML5 Video.
-                </video>
+                <div class="video-wrapper">
+                    <video id="videoPlayer" controls controlsList="nodownload" oncontextmenu="return false;" preload="none" class="video-element">
+                        Seu navegador não suporta HTML5 Video.
+                    </video>
+                    <!-- Protective overlay intercepting right clicks on the player frame -->
+                    <div class="protective-overlay" oncontextmenu="return false;"></div>
+                </div>
             </div>
             <div class="player-info">
                 <p id="playerDesc"></p>

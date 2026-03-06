@@ -98,10 +98,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const dateObj = new Date(item.created_at);
             const dateStr = dateObj.toLocaleDateString('pt-BR');
 
+            const coverHtml = item.cover_filename 
+                ? `<img src="/api/media/stream/cover/${item.id}${isPrivate ? '?token='+token : ''}" class="media-cover-img" alt="Capa" />`
+                : `<ion-icon name="play-circle-outline"></ion-icon>`;
+
             card.innerHTML = `
                 <div class="media-thumbnail">
+                    ${coverHtml}
                     <span class="media-status ${statusClass}">${statusText}</span>
-                    <ion-icon name="play-circle-outline"></ion-icon>
                 </div>
                 <div class="media-info">
                     <h3 class="media-title" title="${item.title}">${item.title}</h3>
@@ -204,53 +208,65 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- Upload Logic ---
-    const dropArea = document.getElementById('dropArea');
-    const fileInput = document.getElementById('videoFile');
-    const fileMessage = document.querySelector('.file-message');
+    const dropAreaVideo = document.getElementById('dropAreaVideo');
+    const fileInputVideo = document.getElementById('videoFile');
+    const fileMessageVideo = document.getElementById('videoFileMessage');
+
+    const dropAreaCover = document.getElementById('dropAreaCover');
+    const fileInputCover = document.getElementById('coverFile');
+    const fileMessageCover = document.getElementById('coverFileMessage');
+
     const uploadForm = document.getElementById('uploadForm');
 
-    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-        dropArea.addEventListener(eventName, preventDefaults, false);
-    });
+    // Setup Video Drop
+    setupDropArea(dropAreaVideo, fileInputVideo, fileMessageVideo, 'vídeo');
+    // Setup Cover Drop
+    setupDropArea(dropAreaCover, fileInputCover, fileMessageCover, 'capa');
+
+    function setupDropArea(area, input, messageEl, typeName) {
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            area.addEventListener(eventName, preventDefaults, false);
+        });
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            area.addEventListener(eventName, () => area.classList.add('dragover'), false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            area.addEventListener(eventName, () => area.classList.remove('dragover'), false);
+        });
+
+        area.addEventListener('drop', (e) => {
+            let files = e.dataTransfer.files;
+            if (files.length) {
+                input.files = files;
+                updateFileDisplay(input, messageEl, area, typeName);
+            }
+        });
+
+        input.addEventListener('change', () => updateFileDisplay(input, messageEl, area, typeName));
+    }
 
     function preventDefaults(e) {
         e.preventDefault();
         e.stopPropagation();
     }
 
-    ['dragenter', 'dragover'].forEach(eventName => {
-        dropArea.addEventListener(eventName, () => dropArea.classList.add('dragover'), false);
-    });
-
-    ['dragleave', 'drop'].forEach(eventName => {
-        dropArea.addEventListener(eventName, () => dropArea.classList.remove('dragover'), false);
-    });
-
-    dropArea.addEventListener('drop', (e) => {
-        let files = e.dataTransfer.files;
-        if (files.length) {
-            fileInput.files = files;
-            updateFileDisplay();
-        }
-    });
-
-    fileInput.addEventListener('change', updateFileDisplay);
-
-    function updateFileDisplay() {
-        if (fileInput.files.length > 0) {
-            fileMessage.textContent = fileInput.files[0].name;
-            dropArea.style.borderColor = 'var(--primary)';
+    function updateFileDisplay(input, messageEl, area, typeName) {
+        if (input.files.length > 0) {
+            messageEl.textContent = input.files[0].name;
+            area.style.borderColor = 'var(--primary)';
         } else {
-            fileMessage.textContent = 'Arraste seu arquivo de vídeo ou clique para escolher';
-            dropArea.style.borderColor = 'var(--border-color)';
+            messageEl.textContent = `Arraste o arquivo de ${typeName} ou clique para escolher`;
+            area.style.borderColor = 'var(--border-color)';
         }
     }
 
     uploadForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         
-        if (fileInput.files.length === 0) {
-            alert('Selecione um arquivo de vídeo.');
+        if (fileInputVideo.files.length === 0) {
+            alert('Selecione um arquivo de vídeo principal.');
             return;
         }
 
@@ -259,13 +275,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const progressContainer = document.getElementById('uploadProgressContainer');
         const progressBar = document.getElementById('uploadProgressBar');
         const progressText = document.getElementById('uploadProgressText');
+        const statusText = document.getElementById('uploadStatusText');
 
         submitBtn.disabled = true;
         cancelUploadBtn.disabled = true;
         progressContainer.classList.remove('hidden');
+        statusText.textContent = 'Enviando Arquivos...';
+        progressBar.style.setProperty('--progress', `0%`);
+        progressText.textContent = `0%`;
 
         try {
-            // Using XMLHttpRequest to track actual upload progress instead of fetch
             const xhr = new XMLHttpRequest();
             
             xhr.upload.addEventListener('progress', (e) => {
@@ -273,17 +292,26 @@ document.addEventListener('DOMContentLoaded', () => {
                     const percentComplete = Math.round((e.loaded / e.total) * 100);
                     progressBar.style.setProperty('--progress', `${percentComplete}%`);
                     progressText.textContent = `${percentComplete}%`;
+
+                    if (percentComplete >= 100) {
+                        statusText.textContent = 'Processando no Servidor...';
+                        progressBar.style.setProperty('--progress', `100%`);
+                        progressText.textContent = `Aguarde`;
+                    }
                 }
             });
 
             xhr.addEventListener('load', async () => {
                 if (xhr.status === 201) {
-                    uploadModal.classList.add('hidden');
-                    uploadForm.reset();
-                    updateFileDisplay();
-                    progressBar.style.setProperty('--progress', `0%`);
-                    progressContainer.classList.add('hidden');
-                    await loadMedia(); // Reload main view
+                    statusText.textContent = 'Sucesso!';
+                    setTimeout(async () => {
+                        uploadModal.classList.add('hidden');
+                        uploadForm.reset();
+                        updateFileDisplay(fileInputVideo, fileMessageVideo, dropAreaVideo, 'vídeo');
+                        updateFileDisplay(fileInputCover, fileMessageCover, dropAreaCover, 'capa');
+                        progressContainer.classList.add('hidden');
+                        await loadMedia(); // Reload main view
+                    }, 1000);
                 } else {
                     alert('Erro no upload: ' + xhr.responseText);
                 }
