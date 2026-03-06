@@ -171,4 +171,20 @@ router.get('/stream/:id', optionalVerifyToken, mediaController.streamMedia);
  */
 router.get('/stream/cover/:id', optionalVerifyToken, mediaController.streamCover);
 
+/**
+ * @swagger
+ * /api/media/{id}/view:
+ *   post:
+ *     summary: Log a view for statistics
+ *     tags: [Media]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *     responses:
+ *       200:
+ *         description: View logged
+ */
+router.post('/:id/view', optionalVerifyToken, mediaController.registerView);
+
 module.exports = router;

@@ -37,9 +37,19 @@ async function initDB() {
                 document_type ENUM('CPF', 'CNPJ') NULL,
                 document_number VARCHAR(20) NULL,
                 personal_token VARCHAR(255) UNIQUE NULL,
+                video_quota INT DEFAULT 10,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
         `);
+
+        // Graceful update for existing databases
+        console.log(`Checking for video_quota column...`);
+        try {
+            await connection.query(`ALTER TABLE users ADD COLUMN video_quota INT DEFAULT 10`);
+            console.log("Added video_quota to users table.");
+        } catch (e) {
+            // Error means column exists, which is fine
+        }
 
         console.log(`Creating media table...`);
         await connection.query(`
@@ -56,6 +66,19 @@ async function initDB() {
                 uploaded_by INT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (uploaded_by) REFERENCES users(id) ON DELETE SET NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        `);
+
+        console.log(`Creating media_views table...`);
+        await connection.query(`
+            CREATE TABLE IF NOT EXISTS media_views (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                media_id INT NOT NULL,
+                user_id INT DEFAULT NULL,
+                viewer_ip VARCHAR(45) NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (media_id) REFERENCES media(id) ON DELETE CASCADE,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
         `);
 

@@ -14,6 +14,25 @@ exports.uploadMedia = async (req, res) => {
         const { title, description, status } = req.body;
         const uploaderId = req.user.id;
 
+        // Check Video Quota
+        // Skip quota for superadmin explicitly just in case, or enforce based on exact number
+        const [userRows] = await pool.query('SELECT role, video_quota FROM users WHERE id = ?', [uploaderId]);
+        const user = userRows[0];
+        
+        if (user.role !== 'superadmin') {
+            const [countRows] = await pool.query('SELECT COUNT(*) as uploadCount FROM media WHERE uploaded_by = ?', [uploaderId]);
+            if (countRows[0].uploadCount >= user.video_quota) {
+                // Remove files that were just uploaded by multer before throwing error
+                if (videoFile && fs.existsSync(videoFile.path)) fs.unlinkSync(videoFile.path);
+                if (coverFile && fs.existsSync(coverFile.path)) fs.unlinkSync(coverFile.path);
+
+                return res.status(403).json({ 
+                    success: false, 
+                    message: `Cota excedida. Você atingiu o limite de ${user.video_quota} vídeos enviados.` 
+                });
+            }
+        }
+
         // Simulate backend processing time (e.g. standardizing formatting, encoding, etc.)
         // This takes ~3 seconds to allow frontend to show 'Processing' state explicitly.
         await new Promise(resolve => setTimeout(resolve, 3000));
@@ -280,5 +299,23 @@ exports.streamCover = async (req, res) => {
     } catch (error) {
         console.error("Cover fetch error:", error);
         res.status(500).json({ success: false, message: 'Error fetching cover.' });
+    }
+};
+
+exports.registerView = async (req, res) => {
+    try {
+        const mediaId = req.params.id;
+        const userId = req.user ? req.user.id : null;
+        const viewerIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || null;
+
+        await pool.query(
+            'INSERT INTO media_views (media_id, user_id, viewer_ip) VALUES (?, ?, ?)',
+            [mediaId, userId, viewerIp]
+        );
+
+        res.json({ success: true, message: 'View registered' });
+    } catch (error) {
+        console.error("View registration error:", error);
+        res.status(500).json({ success: false });
     }
 };

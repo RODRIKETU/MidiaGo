@@ -42,6 +42,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const closePlayerModalBtn = document.getElementById('closePlayerModal');
     const videoPlayer = document.getElementById('videoPlayer');
     
+    // Admin Panels
+    const btnAdminPanel = document.getElementById('btnAdminPanel');
+    const adminContainer = document.getElementById('adminContainer');
+    const pageTitleContainer = document.getElementById('pageTitleContainer');
+    const pageTitleText = document.getElementById('pageTitleText');
+    const pageSubtitleText = document.getElementById('pageSubtitleText');
+    const editUserModal = document.getElementById('editUserModal');
+    
+    if (user.role === 'superadmin') {
+        btnAdminPanel.classList.remove('hidden');
+    }
+
     const btnLogout = document.getElementById('btnLogout');
 
     // DOM Elements - Data
@@ -676,6 +688,52 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         closeProfileModalBtn.addEventListener('click', () => profileModal.classList.add('hidden'));
 
+        // Admin Edit User Modal
+        document.getElementById('closeEditUserModal').addEventListener('click', () => editUserModal.classList.add('hidden'));
+        document.getElementById('cancelEditUser').addEventListener('click', () => editUserModal.classList.add('hidden'));
+
+        // Admin Panel Toggle
+        if (btnAdminPanel) {
+            btnAdminPanel.addEventListener('click', (e) => {
+                e.preventDefault();
+                document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+                btnAdminPanel.classList.add('active');
+                
+                mediaContainer.classList.add('hidden');
+                document.querySelector('.view-controls').classList.add('hidden');
+                document.getElementById('emptyState').classList.add('hidden');
+                
+                adminContainer.classList.remove('hidden');
+                pageTitleText.textContent = 'Gerenciar Usuários';
+                pageSubtitleText.textContent = 'Monitoramento e edições de privilégios de acesso.';
+                
+                loadAdminUsers();
+            });
+        }
+
+        // Navigation reset (Dashboard click)
+        const btnDashboard = document.querySelector('.nav-item');
+        if (btnDashboard) {
+            btnDashboard.addEventListener('click', (e) => {
+                if (e.target.closest('#btnUploadModal') || e.target.closest('#btnProfileModal') || e.target.closest('#btnAdminPanel') || e.target.closest('#btnLogout')) return;
+                e.preventDefault();
+                
+                document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+                btnDashboard.classList.add('active');
+                
+                adminContainer.classList.add('hidden');
+                mediaContainer.classList.remove('hidden');
+                document.querySelector('.view-controls').classList.remove('hidden');
+                
+                pageTitleText.textContent = 'Sua Galeria';
+                pageSubtitleText.textContent = 'Acesse e gerencie todo o portfólio de vídeos.';
+                
+                if (mediaItems.length === 0) {
+                    document.getElementById('emptyState').classList.remove('hidden');
+                }
+            });
+        }
+
         // Player Modal
         closePlayerModalBtn.addEventListener('click', () => {
             playerModal.classList.add('hidden');
@@ -704,4 +762,124 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
     }
+
+    // --- Admin Functions ---
+    async function loadAdminUsers() {
+        const tbody = document.getElementById('usersTableBody');
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center;">Carregando usuários...</td></tr>';
+        
+        try {
+            const response = await fetch('/api/admin/users', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await response.json();
+            
+            if (response.ok && data.success) {
+                tbody.innerHTML = '';
+                if (data.users.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center;">Nenhum usuário encontrado.</td></tr>';
+                    return;
+                }
+                
+                data.users.forEach(u => {
+                    const tr = document.createElement('tr');
+                    
+                    const roleBadge = u.role === 'superadmin' ? '<span class="badge" style="background:var(--danger)">Superadmin</span>' :
+                                      u.role === 'usuario' ? '<span class="badge" style="background:var(--primary)">Usuário</span>' :
+                                      '<span class="badge" style="background:var(--text-secondary)">Cliente</span>';
+                    
+                    const date = new Date(u.created_at).toLocaleDateString('pt-BR');
+                    
+                    tr.innerHTML = `
+                        <td>
+                            <strong>${u.username}</strong><br>
+                            <small style="color:var(--text-secondary)">${u.email || 'Sem email'}</small>
+                        </td>
+                        <td>${roleBadge}</td>
+                        <td>${u.upload_count} / ${u.video_quota}</td>
+                        <td>${u.total_views}</td>
+                        <td>${date}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline" onclick="openEditUserModal(${u.id}, '${u.username}', '${u.role}', ${u.video_quota})">Editar</button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteUser(${u.id}, '${u.username}')">Excluir</button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } else {
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--danger)">Erro: ${data.message}</td></tr>`;
+            }
+        } catch (err) {
+            console.error('Admin Fetch Users Error:', err);
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--danger)">Erro de conexão.</td></tr>';
+        }
+    }
+
+    window.openEditUserModal = (id, username, role, quota) => {
+        document.getElementById('adminEditUserId').value = id;
+        document.getElementById('adminEditUserName').value = username;
+        document.getElementById('adminEditUserRole').value = role;
+        document.getElementById('adminEditUserQuota').value = quota;
+        document.getElementById('editUserModal').classList.remove('hidden');
+    };
+
+    window.deleteUser = async (id, username) => {
+        if (!confirm(`TEM CERTEZA ABSOLUTA? Esta ação irá deletar o usuário "${username}" e TODOS OS VÍDEOS pertencentes a ele para sempre! Esta ação não pode ser desfeita.`)) return;
+        
+        try {
+            const response = await fetch(`/api/admin/users/${id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await response.json();
+            
+            if (response.ok && data.success) {
+                alert('Usuário deletado e mídia purgada com sucesso.');
+                loadAdminUsers();
+            } else {
+                alert('Erro: ' + data.message);
+            }
+        } catch (err) {
+            alert('Erro de conexão ao deletar usuário.');
+        }
+    };
+
+    const editUserForm = document.getElementById('editUserForm');
+    if (editUserForm) {
+        editUserForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('adminEditUserId').value;
+            const role = document.getElementById('adminEditUserRole').value;
+            const quota = document.getElementById('adminEditUserQuota').value;
+            
+            const submitBtn = editUserForm.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Salvando...';
+
+            try {
+                const response = await fetch(`/api/admin/users/${id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ role, video_quota: quota })
+                });
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    document.getElementById('editUserModal').classList.add('hidden');
+                    loadAdminUsers();
+                } else {
+                    alert('Erro ao atualizar usuário: ' + data.message);
+                }
+            } catch (err) {
+                alert('Erro de conexão ao salvar usuário.');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Salvar Permissões';
+            }
+        });
+    }
+
 });
