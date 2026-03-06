@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark-mode">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MidiaGo - Dashboard</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <!-- Ionicons -->
+    <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
+    <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo-container sidebar-logo">
+                <div class="logo-icon small"></div>
+                <h2>MidiaGo</h2>
+            </div>
+            
+            <nav class="nav-menu">
+                <a href="#" class="nav-item active">
+                    <ion-icon name="grid-outline"></ion-icon>
+                    <span>Dashboard</span>
+                </a>
+                <a href="#" class="nav-item" id="btnUploadModal">
+                    <ion-icon name="cloud-upload-outline"></ion-icon>
+                    <span>Upload</span>
+                </a>
+                <a href="#" class="nav-item" id="btnProfileModal">
+                    <ion-icon name="person-outline"></ion-icon>
+                    <span>Perfil</span>
+                </a>
+                <a href="#" class="nav-item" id="btnLogout">
+                    <ion-icon name="log-out-outline"></ion-icon>
+                    <span>Sair</span>
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="top-nav">
+                <div class="search-bar">
+                    <ion-icon name="search-outline"></ion-icon>
+                    <input type="text" id="searchInput" placeholder="Pesquisar mídia...">
+                </div>
+                
+                <div class="user-info">
+                    <span id="welcomeText">Olá!</span>
+                    <div class="avatar" id="userAvatar">U</div>
+                </div>
+            </header>
+
+            <div class="content-header">
+                <div class="content-title">
+                    <h1>Sua Galeria</h1>
+                    <p>Acesse e gerencie todo o portfólio de vídeos.</p>
+                </div>
+                
+                <div class="view-controls">
+                    <button class="view-btn active" id="btnGridView" title="Visualização em Grade">
+                        <ion-icon name="grid"></ion-icon>
+                    </button>
+                    <button class="view-btn" id="btnListView" title="Visualização em Lista">
+                        <ion-icon name="list"></ion-icon>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Media Container -->
+            <div id="mediaContainer" class="media-grid">
+                <!-- Items populated via JS -->
+            </div>
+            
+            <div id="loadingIndicator" class="loading-state hidden">
+                <div class="spinner"></div>
+                <p>Carregando mídias...</p>
+            </div>
+            
+            <div id="emptyState" class="empty-state hidden">
+                <ion-icon name="folder-open-outline"></ion-icon>
+                <h3>Nenhuma mídia encontrada</h3>
+                <p>Faça o primeiro upload para começar.</p>
+            </div>
+        </main>
+    </div>
+
+    <!-- Upload Modal -->
+    <div id="uploadModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Cenário de Upload</h2>
+                <button class="close-btn" id="closeUploadModal">
+                    <ion-icon name="close-outline"></ion-icon>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="uploadForm" enctype="multipart/form-data">
+                    <div class="input-group">
+                        <label for="titulo">Título *</label>
+                        <input type="text" id="titulo" name="title" required placeholder="Digite o título do vídeo">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="descricao">Descrição</label>
+                        <textarea id="descricao" name="description" rows="3" placeholder="Insira uma descrição"></textarea>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="status">Nível de Acesso *</label>
+                        <div class="select-wrapper">
+                            <select id="status" name="status" required>
+                                <option value="private">Privado (Requer Token Pessoal P/ Consumo API)</option>
+                                <option value="public">Público (Apenas URL)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label>Arquivo de Vídeo *</label>
+                        <div class="file-drop-area" id="dropArea">
+                            <ion-icon name="cloud-upload-outline"></ion-icon>
+                            <span class="file-message">Arraste seu arquivo de vídeo ou clique para escolher</span>
+                            <input class="file-input" type="file" id="videoFile" name="video" accept="video/mp4,video/mkv,video/webm" required>
+                        </div>
+                    </div>
+
+                    <div id="uploadProgressContainer" class="progress-bar-container hidden">
+                        <div id="uploadProgressBar" class="progress-bar"></div>
+                        <span id="uploadProgressText">0%</span>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" id="cancelUpload">Cancelar</button>
+                        <button type="submit" class="btn btn-primary" id="submitUpload">Fazer Upload</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Profile & Token Modal -->
+    <div id="profileModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Meu Perfil</h2>
+                <button class="close-btn" id="closeProfileModal">
+                    <ion-icon name="close-outline"></ion-icon>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="profile-card">
+                    <div class="profile-avatar"><ion-icon name="person"></ion-icon></div>
+                    <div class="profile-details">
+                        <h3 id="profileName">Usuário</h3>
+                        <span class="badge" id="profileRole">Carregando...</span>
+                    </div>
+                </div>
+
+                <div class="token-section">
+                    <h3>Token de Acesso (API Externa)</h3>
+                    <p>Utilize este token para consumir suas mídias privadas externamente, passando-o no header <code class="code-inline">x-personal-token</code>.</p>
+                    
+                    <div class="token-display">
+                        <input type="text" id="personalTokenInput" readonly placeholder="Nenhum token gerado ainda">
+                        <button class="btn-icon" id="copyTokenBtn" title="Copiar Token">
+                            <ion-icon name="copy-outline"></ion-icon>
+                        </button>
+                    </div>
+                    
+                    <button class="btn btn-outline" id="generateTokenBtn">Gerar Novo Token</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Video Player Modal -->
+    <div id="playerModal" class="modal-overlay hidden player-overlay">
+        <div class="modal-content player-modal">
+            <div class="modal-header">
+                <h2 id="playerTitle">Visualizador de Mídia</h2>
+                <!-- Link wrapper to open external URL securely if needed -->
+                <a href="#" class="btn-icon ext-btn" id="externalLinkBtn" target="_blank" title="Abrir Consumo Externo">
+                    <ion-icon name="open-outline"></ion-icon>
+                </a>
+                <button class="close-btn" id="closePlayerModal">
+                    <ion-icon name="close-outline"></ion-icon>
+                </button>
+            </div>
+            <div class="player-body">
+                <!-- ControlsList nodownload prevents native download button -->
+                <!-- Use oncontextmenu to reduce saving capability by clicking right button -->
+                <video id="videoPlayer" controls controlsList="nodownload" oncontextmenu="return false;" preload="none" class="video-element">
+                    Seu navegador não suporta HTML5 Video.
+                </video>
+            </div>
+            <div class="player-info">
+                <p id="playerDesc"></p>
+                <div class="api-instructions hidden" id="apiInstructions">
+                    <h5>Instruções de Integração Externa</h5>
+                    <p id="apiEndpointText"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/dashboard.js"></script>
+</body>
+</html>
