@@ -162,9 +162,152 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('profileName').textContent = data.user.username;
                 document.getElementById('profileRole').textContent = data.user.role;
                 document.getElementById('personalTokenInput').value = data.user.personal_token || '';
+                
+                // Populate new fields
+                document.getElementById('email').value = data.user.email || '';
+                document.getElementById('phone').value = data.user.phone || '';
+                document.getElementById('cep').value = data.user.cep || '';
+                document.getElementById('address').value = data.user.address || '';
+                document.getElementById('document_type').value = data.user.document_type || '';
+                document.getElementById('document_number').value = data.user.document_number || '';
+                
+                if (data.user.avatar) {
+                    document.getElementById('avatarPreview').innerHTML = `<img src="/api/media/stream/cover/${data.user.avatar}?token=${token}" alt="Avatar">`;
+                }
             }
         } catch (err) {
             console.error(err);
+        }
+    }
+
+    // Profile Form Submission
+    document.getElementById('profileForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const docError = document.getElementById('documentError');
+        if (!docError.classList.contains('hidden')) {
+            alert('Corrija os erros antes de salvar.');
+            return;
+        }
+
+        const submitBtn = document.getElementById('submitProfile');
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Salvando...';
+
+        const formData = new FormData(e.target);
+
+        try {
+            const response = await fetch('/api/auth/profile/update', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` },
+                body: formData
+            });
+
+            const data = await response.json();
+            
+            if (response.ok && data.success) {
+                alert('Perfil atualizado com sucesso!');
+                fetchProfile(); // refresh
+            } else {
+                alert('Erro: ' + (data.message || 'Falha ao atualizar perfil'));
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Erro de conexão');
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Salvar Alterações';
+        }
+    });
+
+    // ViaCEP Integration
+    document.getElementById('cep').addEventListener('blur', async (e) => {
+        let cep = e.target.value.replace(/\D/g, '');
+        if (cep.length === 8) {
+            try {
+                const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+                const data = await response.json();
+                if (!data.erro) {
+                    document.getElementById('address').value = `${data.logradouro}, , ${data.bairro}, ${data.localidade} - ${data.uf}`;
+                }
+            } catch (err) {
+                console.error("ViaCEP error", err);
+            }
+        }
+    });
+
+    // Document Validation (CPF/CNPJ)
+    const docInput = document.getElementById('document_number');
+    const docType = document.getElementById('document_type');
+    const docError = document.getElementById('documentError');
+
+    function validateCPF(cpf) {
+        cpf = cpf.replace(/\D/g, '');
+        if(cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false;
+        let sum = 0, rest;
+        for (let i = 1; i <= 9; i++) sum = sum + parseInt(cpf.substring(i-1, i)) * (11 - i);
+        rest = (sum * 10) % 11;
+        if ((rest == 10) || (rest == 11)) rest = 0;
+        if (rest != parseInt(cpf.substring(9, 10))) return false;
+        sum = 0;
+        for (let i = 1; i <= 10; i++) sum = sum + parseInt(cpf.substring(i-1, i)) * (12 - i);
+        rest = (sum * 10) % 11;
+        if ((rest == 10) || (rest == 11)) rest = 0;
+        if (rest != parseInt(cpf.substring(10, 11))) return false;
+        return true;
+    }
+
+    function validateCNPJ(cnpj) {
+        cnpj = cnpj.replace(/\D/g, '');
+        if (cnpj.length !== 14 || /^(\d)\1{13}$/.test(cnpj)) return false;
+        let size = cnpj.length - 2;
+        let numbers = cnpj.substring(0, size);
+        let digits = cnpj.substring(size);
+        let sum = 0;
+        let pos = size - 7;
+        for (let i = size; i >= 1; i--) {
+            sum += numbers.charAt(size - i) * pos--;
+            if (pos < 2) pos = 9;
+        }
+        let result = sum % 11 < 2 ? 0 : 11 - sum % 11;
+        if (result != digits.charAt(0)) return false;
+        size = size + 1;
+        numbers = cnpj.substring(0, size);
+        sum = 0;
+        pos = size - 7;
+        for (let i = size; i >= 1; i--) {
+            sum += numbers.charAt(size - i) * pos--;
+            if (pos < 2) pos = 9;
+        }
+        result = sum % 11 < 2 ? 0 : 11 - sum % 11;
+        if (result != digits.charAt(1)) return false;
+        return true;
+    }
+
+    docInput.addEventListener('input', () => {
+        let val = docInput.value.replace(/\D/g, '');
+        docInput.value = val; // enforce numbers only
+        validateDoc();
+    });
+
+    docType.addEventListener('change', validateDoc);
+
+    function validateDoc() {
+        const type = docType.value;
+        const val = docInput.value;
+        if (!val || !type) {
+            docError.classList.add('hidden');
+            return;
+        }
+
+        let isValid = false;
+        if (type === 'CPF') isValid = validateCPF(val);
+        else if (type === 'CNPJ') isValid = validateCNPJ(val);
+
+        if (!isValid && val.length > 0) {
+            docError.classList.remove('hidden');
+        } else {
+            docError.classList.add('hidden');
         }
     }
 

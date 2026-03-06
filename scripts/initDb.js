@@ -29,6 +29,13 @@ async function initDB() {
                 username VARCHAR(50) NOT NULL UNIQUE,
                 password VARCHAR(255) NOT NULL,
                 role ENUM('usuario', 'superadmin') DEFAULT 'usuario',
+                avatar VARCHAR(255) NULL,
+                email VARCHAR(100) NULL,
+                phone VARCHAR(20) NULL,
+                cep VARCHAR(10) NULL,
+                address TEXT NULL,
+                document_type ENUM('CPF', 'CNPJ') NULL,
+                document_number VARCHAR(20) NULL,
                 personal_token VARCHAR(255) UNIQUE NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

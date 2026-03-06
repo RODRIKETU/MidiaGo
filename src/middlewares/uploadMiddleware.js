@@ -26,11 +26,11 @@ const fileFilter = (req, file, cb) => {
         } else {
             cb(new Error('Only video files are allowed for the video field!'), false);
         }
-    } else if (file.fieldname === 'cover') {
+    } else if (file.fieldname === 'cover' || file.fieldname === 'avatar') {
         if (file.mimetype.startsWith('image/')) {
             cb(null, true);
         } else {
-            cb(new Error('Only image files are allowed for the cover field!'), false);
+            cb(new Error(`Only image files are allowed for the ${file.fieldname} field!`), false);
         }
     } else {
         cb(new Error('Unexpected field'), false);
@@ -45,7 +45,8 @@ const upload = multer({
     }
 }).fields([
     { name: 'video', maxCount: 1 },
-    { name: 'cover', maxCount: 1 }
+    { name: 'cover', maxCount: 1 },
+    { name: 'avatar', maxCount: 1 }
 ]);
 
 module.exports = upload;

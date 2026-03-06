@@ -44,7 +44,7 @@ exports.login = async (req, res) => {
 
 exports.getProfile = async (req, res) => {
     try {
-        const [users] = await pool.query('SELECT id, username, role, personal_token, created_at FROM users WHERE id = ?', [req.user.id]);
+        const [users] = await pool.query('SELECT id, username, role, avatar, email, phone, cep, address, document_type, document_number, personal_token, created_at FROM users WHERE id = ?', [req.user.id]);
         if (users.length === 0) {
             return res.status(404).json({ success: false, message: 'User not found' });
         }
@@ -66,5 +66,35 @@ exports.generateToken = async (req, res) => {
     } catch (error) {
         console.error("Error generating token:", error);
         res.status(500).json({ success: false, message: 'Error generating personal token' });
+    }
+};
+
+exports.updateProfile = async (req, res) => {
+    try {
+        const { email, phone, cep, address, document_type, document_number } = req.body;
+        
+        let updateQuery = 'UPDATE users SET email=?, phone=?, cep=?, address=?, document_type=?, document_number=?';
+        let queryParams = [email || null, phone || null, cep || null, address || null, document_type || null, document_number || null];
+
+        // Handle avatar upload if present
+        if (req.files && req.files.avatar) {
+            const avatarPath = req.files.avatar[0].filename;
+            updateQuery += ', avatar=?';
+            queryParams.push(avatarPath);
+        }
+
+        updateQuery += ' WHERE id=?';
+        queryParams.push(req.user.id);
+
+        await pool.query(updateQuery, queryParams);
+        
+        // Fetch updated user to return
+        const [users] = await pool.query('SELECT id, username, role, avatar, email, phone, cep, address, document_type, document_number, personal_token, created_at FROM users WHERE id = ?', [req.user.id]);
+        
+        res.json({ success: true, message: 'Profile updated successfully', user: users[0] });
+
+    } catch (error) {
+        console.error("Error updating profile:", error);
+        res.status(500).json({ success: false, message: 'Error updating profile' });
     }
 };

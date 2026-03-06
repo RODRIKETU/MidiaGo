@@ -164,12 +164,63 @@
             </div>
             <div class="modal-body">
                 <div class="profile-card">
-                    <div class="profile-avatar"><ion-icon name="person"></ion-icon></div>
+                    <div class="profile-avatar" id="avatarPreview"><ion-icon name="person"></ion-icon></div>
                     <div class="profile-details">
                         <h3 id="profileName">Usuário</h3>
                         <span class="badge" id="profileRole">Carregando...</span>
                     </div>
                 </div>
+
+                <form id="profileForm" enctype="multipart/form-data" class="profile-form">
+                    <div class="input-group">
+                        <label for="avatarFile">Alterar Foto de Perfil (Opcional)</label>
+                        <input type="file" id="avatarFile" name="avatar" accept="image/jpeg,image/png,image/webp,image/jpg" class="file-input-simple">
+                    </div>
+
+                    <div class="form-row">
+                        <div class="input-group">
+                            <label for="email">E-mail</label>
+                            <input type="email" id="email" name="email" placeholder="seu@email.com">
+                        </div>
+                        <div class="input-group">
+                            <label for="phone">Telefone</label>
+                            <input type="tel" id="phone" name="phone" placeholder="(11) 99999-9999">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="input-group">
+                            <label for="document_type">Tipo de Documento</label>
+                            <div class="select-wrapper">
+                                <select id="document_type" name="document_type">
+                                    <option value="">Selecione...</option>
+                                    <option value="CPF">CPF</option>
+                                    <option value="CNPJ">CNPJ</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="input-group">
+                            <label for="document_number">Número do Documento</label>
+                            <input type="text" id="document_number" name="document_number" placeholder="Digite apenas números">
+                            <span id="documentError" class="error-message hidden">Documento inválido.</span>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="input-group cep-group">
+                            <label for="cep">CEP</label>
+                            <input type="text" id="cep" name="cep" placeholder="00000-000" maxlength="9">
+                        </div>
+                        <div class="input-group address-group">
+                            <label for="address">Endereço Completo</label>
+                            <input type="text" id="address" name="address" placeholder="Rua, Número, Bairro, Cidade - UF">
+                        </div>
+                    </div>
+
+                    <div class="modal-footer" style="margin-top: 1rem; margin-bottom: 2rem;">
+                        <button type="submit" class="btn btn-primary btn-block" id="submitProfile">Salvar Alterações</button>
+                    </div>
+                </form>
 
                 <div class="token-section">
                     <h3>Token de Acesso (API Externa)</h3>

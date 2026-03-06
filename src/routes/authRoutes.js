@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/authController');
 const { verifyToken } = require('../middlewares/authMiddleware');
+const upload = require('../middlewares/uploadMiddleware');
 
 /**
  * @swagger
@@ -64,6 +65,44 @@ router.post('/login', authController.login);
  *         description: Unauthorized
  */
 router.get('/profile', verifyToken, authController.getProfile);
+
+/**
+ * @swagger
+ * /api/auth/profile/update:
+ *   post:
+ *     summary: Update current logged in user profile details
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               avatar:
+ *                 type: string
+ *                 format: binary
+ *               email:
+ *                 type: string
+ *               phone:
+ *                 type: string
+ *               cep:
+ *                 type: string
+ *               address:
+ *                 type: string
+ *               document_type:
+ *                 type: string
+ *                 enum: [CPF, CNPJ]
+ *               document_number:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Profile updated
+ *       401:
+ *         description: Unauthorized
+ */
+router.post('/profile/update', verifyToken, upload, authController.updateProfile);
 
 /**
  * @swagger
