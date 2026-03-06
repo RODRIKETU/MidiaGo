@@ -82,7 +82,7 @@ const optionalVerifyToken = async (req, res, next) => {
     next();
 };
 
-exports.requireSuperadmin = (req, res, next) => {
+const requireSuperadmin = (req, res, next) => {
     if (!req.user || req.user.role !== 'superadmin') {
         return res.status(403).json({ success: false, message: 'Access denied. Superadmin only.' });
     }

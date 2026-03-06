@@ -265,6 +265,43 @@
         </div>
     </div>
 
+    <!-- Share Media Modal -->
+    <div id="shareMediaModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Compartilhar Mídia</h2>
+                <button class="close-btn" id="closeShareMediaModal">
+                    <ion-icon name="close-outline"></ion-icon>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="token-section" style="margin-top: 0; padding: 1.5rem 0;">
+                    <p style="margin-bottom: 1.5rem; color: var(--text-secondary);">Escolha a melhor forma de integrar este vídeo no seu site ou aplicativo.</p>
+
+                    <div class="input-group">
+                        <label>Link Direto (URL)</label>
+                        <div class="token-display">
+                            <input type="text" id="shareDirectLink" readonly placeholder="Gerando link...">
+                            <button class="btn-icon" id="copyShareLinkBtn" title="Copiar Link">
+                                <ion-icon name="copy-outline"></ion-icon>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="input-group" style="margin-top: 1.5rem;">
+                        <label>Código de Incorporação (iframe)</label>
+                        <div style="position: relative;">
+                            <textarea id="shareIframeCode" rows="4" readonly style="width: 100%; border-radius: 8px; font-family: monospace; resize: none;"></textarea>
+                            <button class="btn-icon" id="copyShareIframeBtn" title="Copiar Incorp." style="position: absolute; right: 8px; top: 8px; border-radius: 8px;">
+                                <ion-icon name="copy-outline"></ion-icon>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Profile & Token Modal -->
     <div id="profileModal" class="modal-overlay hidden">
         <div class="modal-content">

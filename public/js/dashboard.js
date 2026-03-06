@@ -133,16 +133,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="media-info">
                     <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                         <h3 class="media-title" title="${item.title}" style="cursor: pointer; flex: 1;">${item.title}</h3>
-                        ${canEditDelete ? `
-                            <div class="media-actions" style="display: flex; gap: 0.5rem; margin-left: 0.5rem;">
+                        <div class="media-actions" style="display: flex; gap: 0.5rem; margin-left: 0.5rem;">
+                            <button class="btn-icon share-btn" style="color: var(--primary); cursor: pointer;" data-id="${item.id}" title="Compartilhar">
+                                <ion-icon name="share-social-outline"></ion-icon>
+                            </button>
+                            ${canEditDelete ? `
                                 <button class="btn-icon edit-btn" style="color: var(--text-secondary); cursor: pointer;" data-id="${item.id}" title="Editar">
                                     <ion-icon name="create-outline"></ion-icon>
                                 </button>
                                 <button class="btn-icon delete-btn" style="color: var(--danger); cursor: pointer;" data-id="${item.id}" title="Excluir">
                                     <ion-icon name="trash-outline"></ion-icon>
                                 </button>
-                            </div>
-                        ` : ''}
+                            ` : ''}
+                        </div>
                     </div>
                     <p class="media-desc" title="${item.description || 'Sem descrição'}">${item.description || 'Sem descrição'}</p>
                     <div class="media-meta">
@@ -155,6 +158,12 @@ document.addEventListener('DOMContentLoaded', () => {
             // Player binds
             card.querySelector('.media-thumbnail').addEventListener('click', () => openPlayer(item));
             card.querySelector('.media-title').addEventListener('click', () => openPlayer(item));
+
+            // Share bind
+            card.querySelector('.share-btn').addEventListener('click', (e) => {
+                e.stopPropagation();
+                openShareModal(item);
+            });
 
             if (canEditDelete) {
                 card.querySelector('.edit-btn').addEventListener('click', (e) => {
@@ -239,6 +248,24 @@ document.addEventListener('DOMContentLoaded', () => {
             submitBtn.textContent = 'Salvar Alterações';
         }
     });
+
+    window.openShareModal = (item) => {
+        const shareModal = document.getElementById('shareMediaModal');
+        const shareDirectLink = document.getElementById('shareDirectLink');
+        const shareIframeCode = document.getElementById('shareIframeCode');
+        
+        let url = `http://${window.location.host}/api/media/stream/${item.id}`;
+        
+        if (item.status === 'private') {
+            // Using the user's personal token so that external embeds work automatically
+            url += `?token=${user.personal_token || token}`;
+        }
+        
+        shareDirectLink.value = url;
+        shareIframeCode.value = `<iframe src="${url}" width="100%" height="480" frameborder="0" allow="autoplay; fullscreen" allowfullscreen></iframe>`;
+        
+        shareModal.classList.remove('hidden');
+    };
 
     function openPlayer(item) {
         document.getElementById('playerTitle').textContent = item.title;
@@ -760,6 +787,25 @@ document.addEventListener('DOMContentLoaded', () => {
                     modal.classList.add('hidden');
                 }
             });
+        });
+
+        // Share Modal Specifics
+        document.getElementById('closeShareMediaModal').addEventListener('click', () => {
+            document.getElementById('shareMediaModal').classList.add('hidden');
+        });
+
+        document.getElementById('copyShareLinkBtn').addEventListener('click', () => {
+            const input = document.getElementById('shareDirectLink');
+            input.select();
+            document.execCommand('copy');
+            alert('Link direto copiado para a área de transferência!');
+        });
+
+        document.getElementById('copyShareIframeBtn').addEventListener('click', () => {
+            const input = document.getElementById('shareIframeCode');
+            input.select();
+            document.execCommand('copy');
+            alert('Código iframe copiado para a área de transferência!');
         });
     }
 
