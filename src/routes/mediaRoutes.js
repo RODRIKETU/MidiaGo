@@ -59,7 +59,61 @@ router.post('/upload', verifyToken, upload, mediaController.uploadMedia);
  *       500:
  *         description: Server error
  */
-router.get('/list', mediaController.listMedia);
+router.get('/list', verifyToken, mediaController.listMedia);
+
+/**
+ * @swagger
+ * /api/media/{id}:
+ *   put:
+ *     summary: Update media details
+ *     tags: [Media]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               status:
+ *                 type: string
+ *                 enum: [public, private]
+ *     responses:
+ *       200:
+ *         description: Media updated
+ *       403:
+ *         description: Not owner or superadmin
+ * 
+ *   delete:
+ *     summary: Delete a media file
+ *     tags: [Media]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Media deleted
+ *       403:
+ *         description: Not owner or superadmin
+ */
+router.put('/:id', verifyToken, mediaController.updateMedia);
+router.delete('/:id', verifyToken, mediaController.deleteMedia);
 
 /**
  * @swagger

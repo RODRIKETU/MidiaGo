@@ -28,7 +28,7 @@ async function initDB() {
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 username VARCHAR(50) NOT NULL UNIQUE,
                 password VARCHAR(255) NOT NULL,
-                role ENUM('usuario', 'superadmin') DEFAULT 'usuario',
+                role ENUM('usuario', 'superadmin', 'cliente') DEFAULT 'usuario',
                 avatar LONGTEXT NULL,
                 email VARCHAR(100) NULL,
                 phone VARCHAR(20) NULL,

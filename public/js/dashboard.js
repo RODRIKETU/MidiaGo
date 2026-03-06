@@ -21,9 +21,18 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // DOM Elements - Modals
     const btnUploadModal = document.getElementById('btnUploadModal');
+    if (user.role === 'cliente') {
+        btnUploadModal.style.display = 'none';
+    }
+
     const uploadModal = document.getElementById('uploadModal');
     const closeUploadModalBtn = document.getElementById('closeUploadModal');
     const cancelUploadBtn = document.getElementById('cancelUpload');
+    
+    const editMediaModal = document.getElementById('editMediaModal');
+    const closeEditMediaModalBtn = document.getElementById('closeEditMediaModal');
+    const cancelEditMediaBtn = document.getElementById('cancelEditMedia');
+    const editMediaForm = document.getElementById('editMediaForm');
     
     const btnProfileModal = document.getElementById('btnProfileModal');
     const profileModal = document.getElementById('profileModal');
@@ -101,14 +110,28 @@ document.addEventListener('DOMContentLoaded', () => {
             const coverHtml = item.cover_filename 
                 ? `<img src="/api/media/stream/cover/${item.id}${isPrivate ? '?token='+token : ''}" class="media-cover-img" alt="Capa" />`
                 : `<ion-icon name="play-circle-outline"></ion-icon>`;
+                
+            const canEditDelete = user.role === 'superadmin' || item.uploaded_by === user.id;
 
             card.innerHTML = `
-                <div class="media-thumbnail">
+                <div class="media-thumbnail" style="cursor: pointer;">
                     ${coverHtml}
                     <span class="media-status ${statusClass}">${statusText}</span>
                 </div>
                 <div class="media-info">
-                    <h3 class="media-title" title="${item.title}">${item.title}</h3>
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <h3 class="media-title" title="${item.title}" style="cursor: pointer; flex: 1;">${item.title}</h3>
+                        ${canEditDelete ? `
+                            <div class="media-actions" style="display: flex; gap: 0.5rem; margin-left: 0.5rem;">
+                                <button class="btn-icon edit-btn" style="color: var(--text-secondary); cursor: pointer;" data-id="${item.id}" title="Editar">
+                                    <ion-icon name="create-outline"></ion-icon>
+                                </button>
+                                <button class="btn-icon delete-btn" style="color: var(--danger); cursor: pointer;" data-id="${item.id}" title="Excluir">
+                                    <ion-icon name="trash-outline"></ion-icon>
+                                </button>
+                            </div>
+                        ` : ''}
+                    </div>
                     <p class="media-desc" title="${item.description || 'Sem descrição'}">${item.description || 'Sem descrição'}</p>
                     <div class="media-meta">
                         <span><ion-icon name="person-circle-outline"></ion-icon> ${item.uploader || 'Desconhecido'}</span>
@@ -117,10 +140,93 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             `;
 
-            card.addEventListener('click', () => openPlayer(item));
+            // Player binds
+            card.querySelector('.media-thumbnail').addEventListener('click', () => openPlayer(item));
+            card.querySelector('.media-title').addEventListener('click', () => openPlayer(item));
+
+            if (canEditDelete) {
+                card.querySelector('.edit-btn').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    openEditModal(item);
+                });
+                card.querySelector('.delete-btn').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    deleteMedia(item.id);
+                });
+            }
+
             mediaContainer.appendChild(card);
         });
     }
+
+    // --- Edit & Delete Logic ---
+    function openEditModal(item) {
+        document.getElementById('editMediaId').value = item.id;
+        document.getElementById('editTitle').value = item.title;
+        document.getElementById('editDescription').value = item.description || '';
+        document.getElementById('editStatus').value = item.status;
+        editMediaModal.classList.remove('hidden');
+    }
+
+    async function deleteMedia(id) {
+        if (!confirm('Tem certeza de que deseja excluir permanentemente esta mídia? O arquivo de vídeo será deletado do servidor.')) return;
+        
+        try {
+            const response = await fetch(`/api/media/${id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await response.json();
+            if (response.ok && data.success) {
+                alert('Mídia excluída com sucesso.');
+                loadMedia();
+            } else {
+                alert('Erro: ' + (data.message || 'Não foi possível excluir.'));
+            }
+        } catch (err) {
+            console.error('Delete error', err);
+            alert('Erro de conexão ao excluir.');
+        }
+    }
+
+    editMediaForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const id = document.getElementById('editMediaId').value;
+        const submitBtn = document.getElementById('submitEditMedia');
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Salvando...';
+
+        const payload = {
+            title: document.getElementById('editTitle').value,
+            description: document.getElementById('editDescription').value,
+            status: document.getElementById('editStatus').value
+        };
+
+        try {
+            const response = await fetch(`/api/media/${id}`, {
+                method: 'PUT',
+                headers: { 
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+            const data = await response.json();
+            
+            if (response.ok && data.success) {
+                editMediaModal.classList.add('hidden');
+                loadMedia();
+            } else {
+                alert('Erro: ' + (data.message || 'Falha ao editar.'));
+            }
+        } catch (err) {
+            console.error('Edit error', err);
+            alert('Erro de conexão.');
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Salvar Alterações';
+        }
+    });
 
     function openPlayer(item) {
         document.getElementById('playerTitle').textContent = item.title;
@@ -513,6 +619,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         closeUploadModalBtn.addEventListener('click', () => uploadModal.classList.add('hidden'));
         cancelUploadBtn.addEventListener('click', () => uploadModal.classList.add('hidden'));
+
+        // Edit Modal Events
+        closeEditMediaModalBtn.addEventListener('click', () => editMediaModal.classList.add('hidden'));
+        cancelEditMediaBtn.addEventListener('click', () => editMediaModal.classList.add('hidden'));
 
         // Profile Modal
         btnProfileModal.addEventListener('click', (e) => {

@@ -63,16 +63,38 @@ exports.listMedia = async (req, res) => {
         const limit = parseInt(req.query.limit) || 20;
         const offset = (page - 1) * limit;
 
-        const [mediaItems] = await pool.query(
-            `SELECT m.id, m.title, m.description, m.status, m.cover_filename, m.created_at, u.username as uploader 
-             FROM media m 
-             LEFT JOIN users u ON m.uploaded_by = u.id 
-             ORDER BY m.created_at DESC 
-             LIMIT ? OFFSET ?`,
-            [limit, offset]
-        );
+        let queryStr = `
+            SELECT m.id, m.title, m.description, m.status, m.cover_filename, m.created_at, m.uploaded_by, u.username as uploader 
+            FROM media m 
+            LEFT JOIN users u ON m.uploaded_by = u.id
+        `;
+        let queryParams = [];
 
-        const [countResult] = await pool.query('SELECT COUNT(*) as total FROM media');
+        // Role-based filtering
+        if (req.user.role === 'cliente') {
+            queryStr += ` WHERE m.status = 'public'`;
+        } else if (req.user.role === 'usuario') {
+            queryStr += ` WHERE m.status = 'public' OR m.uploaded_by = ?`;
+            queryParams.push(req.user.id);
+        }
+        // superadmin sees all, no WHERE clause
+
+        queryStr += ` ORDER BY m.created_at DESC LIMIT ? OFFSET ?`;
+        queryParams.push(limit, offset);
+
+        const [mediaItems] = await pool.query(queryStr, queryParams);
+
+        let countQueryStr = 'SELECT COUNT(*) as total FROM media m';
+        let countParams = [];
+
+        if (req.user.role === 'cliente') {
+            countQueryStr += ` WHERE m.status = 'public'`;
+        } else if (req.user.role === 'usuario') {
+            countQueryStr += ` WHERE m.status = 'public' OR m.uploaded_by = ?`;
+            countParams.push(req.user.id);
+        }
+
+        const [countResult] = await pool.query(countQueryStr, countParams);
         const totalItems = countResult[0].total;
 
         res.json({
@@ -163,6 +185,70 @@ exports.streamMedia = async (req, res) => {
     } catch (error) {
         console.error("Stream error:", error);
         res.status(500).json({ success: false, message: 'Error streaming video.' });
+    }
+};
+
+exports.updateMedia = async (req, res) => {
+    try {
+        const mediaId = req.params.id;
+        const { title, description, status } = req.body;
+
+        const [mediaRows] = await pool.query('SELECT * FROM media WHERE id = ?', [mediaId]);
+        if (mediaRows.length === 0) {
+            return res.status(404).json({ success: false, message: 'Media not found.' });
+        }
+
+        const media = mediaRows[0];
+
+        // Access control: Only owner or superadmin can edit
+        if (req.user.role !== 'superadmin' && media.uploaded_by !== req.user.id) {
+            return res.status(403).json({ success: false, message: 'You do not have permission to edit this media.' });
+        }
+
+        await pool.query(
+            'UPDATE media SET title=?, description=?, status=? WHERE id=?',
+            [title, description, status, mediaId]
+        );
+
+        res.json({ success: true, message: 'Media updated successfully' });
+    } catch (error) {
+        console.error("Update error:", error);
+        res.status(500).json({ success: false, message: 'Failed to update media.' });
+    }
+};
+
+exports.deleteMedia = async (req, res) => {
+    try {
+        const mediaId = req.params.id;
+        
+        const [mediaRows] = await pool.query('SELECT * FROM media WHERE id = ?', [mediaId]);
+        if (mediaRows.length === 0) {
+            return res.status(404).json({ success: false, message: 'Media not found.' });
+        }
+
+        const media = mediaRows[0];
+
+        // Access control: Only owner or superadmin can delete
+        if (req.user.role !== 'superadmin' && media.uploaded_by !== req.user.id) {
+            return res.status(403).json({ success: false, message: 'You do not have permission to delete this media.' });
+        }
+
+        // Delete files from disk
+        const videoPath = path.join(__dirname, '../../uploads', media.filename);
+        try { fs.unlinkSync(videoPath); } catch (e) { console.error("Could not delete video file", e); }
+
+        if (media.cover_filename) {
+            const coverPath = path.join(__dirname, '../../uploads', media.cover_filename);
+            try { fs.unlinkSync(coverPath); } catch (e) { console.error("Could not delete cover file", e); }
+        }
+
+        // Delete from DB
+        await pool.query('DELETE FROM media WHERE id = ?', [mediaId]);
+
+        res.json({ success: true, message: 'Media deleted successfully' });
+    } catch (error) {
+        console.error("Delete error:", error);
+        res.status(500).json({ success: false, message: 'Failed to delete media.' });
     }
 };
 

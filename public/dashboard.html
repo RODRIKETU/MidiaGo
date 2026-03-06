@@ -153,6 +153,48 @@
         </div>
     </div>
 
+    <!-- Edit Media Modal -->
+    <div id="editMediaModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Editar Mídia</h2>
+                <button class="close-btn" id="closeEditMediaModal">
+                    <ion-icon name="close-outline"></ion-icon>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="editMediaForm">
+                    <input type="hidden" id="editMediaId" name="id">
+                    
+                    <div class="input-group">
+                        <label for="editTitle">Título da Mídia *</label>
+                        <input type="text" id="editTitle" name="title" required placeholder="Digite o título...">
+                    </div>
+
+                    <div class="input-group">
+                        <label for="editDescription">Descrição</label>
+                        <textarea id="editDescription" name="description" rows="3" placeholder="Detalhes sobre a mídia..."></textarea>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="editStatus">Privacidade</label>
+                        <div class="select-wrapper">
+                            <select id="editStatus" name="status">
+                                <option value="private">Privado (Requer Token Pessoal na chamada API)</option>
+                                <option value="public">Público (Acessível via link direto da API)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" id="cancelEditMedia">Cancelar</button>
+                        <button type="submit" class="btn btn-primary" id="submitEditMedia">Salvar Alterações</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <!-- Profile & Token Modal -->
     <div id="profileModal" class="modal-overlay hidden">
         <div class="modal-content">
