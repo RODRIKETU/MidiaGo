@@ -43,6 +43,83 @@ exports.login = async (req, res) => {
     }
 };
 
+exports.register = async (req, res) => {
+    const { username, password } = req.body;
+
+    if (!username || !password) {
+        return res.status(400).json({ success: false, message: 'Username and password are required' });
+    }
+
+    try {
+        // Check if username already exists
+        const [existingUser] = await pool.query('SELECT id FROM users WHERE username = ?', [username]);
+        if (existingUser.length > 0) {
+            return res.status(409).json({ success: false, message: 'Usuário já existe. Escolha outro nome.' });
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+        
+        // New users default to 'cliente' role
+        const [result] = await pool.query(
+            'INSERT INTO users (username, password, role) VALUES (?, ?, ?)',
+            [username, hashedPassword, 'cliente']
+        );
+
+        // Auto login after register
+        const token = jwt.sign(
+            { id: result.insertId, username, role: 'cliente' },
+            process.env.JWT_SECRET || 'fallback_secret',
+            { expiresIn: '24h' }
+        );
+
+        res.status(201).json({
+            success: true,
+            token,
+            user: {
+                id: result.insertId,
+                username: username,
+                role: 'cliente'
+            }
+        });
+
+    } catch (error) {
+        console.error("Register error:", error);
+        res.status(500).json({ success: false, message: 'Erro interno durante o cadastro.' });
+    }
+};
+
+exports.subscribe = async (req, res) => {
+    try {
+        if (req.user.role !== 'cliente') {
+            return res.status(400).json({ success: false, message: 'Apenas clientes podem assinar o plano.' });
+        }
+
+        // Upgrade Role
+        await pool.query('UPDATE users SET role = ? WHERE id = ?', ['usuario', req.user.id]);
+        
+        // Generate new token with updated role privileges
+        const newToken = jwt.sign(
+            { id: req.user.id, username: req.user.username, role: 'usuario' },
+            process.env.JWT_SECRET || 'fallback_secret',
+            { expiresIn: '24h' }
+        );
+
+        res.json({ 
+            success: true, 
+            message: 'Assinatura Premium ativada! Você agora pode fazer uploads.',
+            token: newToken,
+            user: {
+                id: req.user.id,
+                username: req.user.username,
+                role: 'usuario'
+            }
+        });
+    } catch (error) {
+        console.error("Subscribe error:", error);
+        res.status(500).json({ success: false, message: 'Erro ao processar assinatura.' });
+    }
+};
+
 exports.getProfile = async (req, res) => {
     try {
         const [users] = await pool.query('SELECT id, username, role, avatar, email, phone, cep, address, document_type, document_number, personal_token, created_at FROM users WHERE id = ?', [req.user.id]);

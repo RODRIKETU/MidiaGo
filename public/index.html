@@ -14,9 +14,11 @@
                 <div class="logo-icon"></div>
                 <h1>MidiaGo</h1>
             </div>
-            <p class="subtitle">Bem-vindo ao portal de mídia empresarial.</p>
+            <p class="subtitle" id="formSubtitle">Bem-vindo ao portal de mídia empresarial.</p>
             
             <form id="loginForm">
+                <input type="hidden" id="formMode" value="login">
+                
                 <div class="input-group">
                     <label for="username">Usuário</label>
                     <input type="text" id="username" placeholder="Digite seu usuário" required>
@@ -27,9 +29,14 @@
                 </div>
                 <div class="error-message" id="errorMessage"></div>
                 
-                <button type="submit" class="btn btn-primary btn-block">
+                <button type="submit" class="btn btn-primary btn-block" id="submitBtn">
                     <span>Acessar Portal</span>
                 </button>
+
+                <div style="margin-top: 1.5rem; text-align: center; color: var(--text-secondary); font-size: 0.9rem;">
+                    <span id="toggleModeText">Não tem uma conta?</span> 
+                    <a href="#" id="toggleModeBtn" style="color: var(--primary); text-decoration: none; font-weight: 600;">Cadastre-se</a>
+                </div>
             </form>
         </div>
     </div>

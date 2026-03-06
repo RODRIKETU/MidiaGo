@@ -280,6 +280,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (data.user.avatar) {
                     document.getElementById('avatarPreview').innerHTML = `<img src="${data.user.avatar}" alt="Avatar">`;
                 }
+
+                if (data.user.role === 'cliente') {
+                    document.getElementById('premiumBanner').classList.remove('hidden');
+                } else {
+                    document.getElementById('premiumBanner').classList.add('hidden');
+                }
             }
         } catch (err) {
             console.error(err);
@@ -325,6 +331,44 @@ document.addEventListener('DOMContentLoaded', () => {
             submitBtn.textContent = 'Salvar Alterações';
         }
     });
+
+    // Premium Subscription Upgrade
+    const btnUpgradePremium = document.getElementById('btnUpgradePremium');
+    if (btnUpgradePremium) {
+        btnUpgradePremium.addEventListener('click', async () => {
+            if(!confirm('Deseja assinar o plano Premium para desbloquear envios de vídeos?')) return;
+            
+            btnUpgradePremium.disabled = true;
+            btnUpgradePremium.textContent = 'Processando...';
+
+            try {
+                const response = await fetch('/api/auth/subscribe', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    alert(data.message);
+                    // Update local storage token and user object
+                    localStorage.setItem('midiago_token', data.token);
+                    localStorage.setItem('midiago_user', JSON.stringify(data.user));
+                    // Force complete reload to re-apply UI visibility rules (Upload buttons, edit buttons, etc)
+                    window.location.reload();
+                } else {
+                    alert('Erro: ' + (data.message || 'Não foi possível realizar a assinatura.'));
+                    btnUpgradePremium.disabled = false;
+                    btnUpgradePremium.textContent = 'Assinar Agora';
+                }
+            } catch (err) {
+                console.error('Subscription error', err);
+                alert('Erro de conexão ao processar a assinatura.');
+                btnUpgradePremium.disabled = false;
+                btnUpgradePremium.textContent = 'Assinar Agora';
+            }
+        });
+    }
 
     // ViaCEP Integration
     document.getElementById('cep').addEventListener('blur', async (e) => {

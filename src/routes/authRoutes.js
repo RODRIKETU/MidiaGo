@@ -52,6 +52,52 @@ router.post('/login', authController.login);
 
 /**
  * @swagger
+ * /api/auth/register:
+ *   post:
+ *     summary: Register a new client account
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - username
+ *               - password
+ *             properties:
+ *               username:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Account created successfully
+ *       400:
+ *         description: Missing fields
+ *       409:
+ *         description: Username already in use
+ */
+router.post('/register', authController.register);
+
+/**
+ * @swagger
+ * /api/auth/subscribe:
+ *   post:
+ *     summary: Upgrade the current logged in user from 'cliente' to 'usuario'
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Subscription activated
+ *       400:
+ *         description: User is not eligible for this upgrade
+ */
+router.post('/subscribe', verifyToken, authController.subscribe);
+
+/**
+ * @swagger
  * /api/auth/profile:
  *   get:
  *     summary: Get current logged in user profile

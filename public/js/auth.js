@@ -8,6 +8,31 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (loginForm) {
+        const formMode = document.getElementById('formMode');
+        const formSubtitle = document.getElementById('formSubtitle');
+        const submitBtnText = loginForm.querySelector('button[type="submit"] span');
+        const toggleModeText = document.getElementById('toggleModeText');
+        const toggleModeBtn = document.getElementById('toggleModeBtn');
+
+        toggleModeBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            errorMessage.textContent = '';
+            
+            if (formMode.value === 'login') {
+                formMode.value = 'register';
+                formSubtitle.textContent = 'Crie sua conta como Cliente.';
+                submitBtnText.textContent = 'Criar Conta';
+                toggleModeText.textContent = 'Já possui uma conta?';
+                toggleModeBtn.textContent = 'Faça Login';
+            } else {
+                formMode.value = 'login';
+                formSubtitle.textContent = 'Bem-vindo ao portal de mídia empresarial.';
+                submitBtnText.textContent = 'Acessar Portal';
+                toggleModeText.textContent = 'Não tem uma conta?';
+                toggleModeBtn.textContent = 'Cadastre-se';
+            }
+        });
+
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             
@@ -19,8 +44,10 @@ document.addEventListener('DOMContentLoaded', () => {
             submitBtn.innerHTML = '<span class="spinner" style="width:20px;height:20px;border-width:2px;margin:0"></span><span>Processando...</span>';
             errorMessage.textContent = '';
 
+            const endpoint = formMode.value === 'login' ? '/api/auth/login' : '/api/auth/register';
+
             try {
-                const response = await fetch('/api/auth/login', {
+                const response = await fetch(endpoint, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -35,14 +62,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     localStorage.setItem('midiago_user', JSON.stringify(data.user));
                     window.location.href = 'dashboard.html';
                 } else {
-                    errorMessage.textContent = data.message || 'Erro ao realizar login.';
+                    errorMessage.textContent = data.message || `Erro ao realizar ${formMode.value === 'login' ? 'login' : 'cadastro'}.`;
                 }
             } catch (error) {
-                console.error('Login error:', error);
+                console.error('Auth error:', error);
                 errorMessage.textContent = 'Erro de conexão com o servidor.';
             } finally {
                 submitBtn.disabled = false;
-                submitBtn.innerHTML = '<span>Acessar Portal</span>';
+                submitBtn.innerHTML = `<span>${formMode.value === 'login' ? 'Acessar Portal' : 'Criar Conta'}</span>`;
             }
         });
     }
