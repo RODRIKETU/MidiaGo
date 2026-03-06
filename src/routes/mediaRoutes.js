@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const mediaController = require('../controllers/mediaController');
 const upload = require('../middlewares/uploadMiddleware');
-const { verifyToken } = require('../middlewares/authMiddleware');
+const { verifyToken, optionalVerifyToken } = require('../middlewares/authMiddleware');
 
 /**
  * @swagger
@@ -89,7 +89,7 @@ router.get('/list', mediaController.listMedia);
  *       404:
  *         description: Media not found
  */
-router.get('/stream/:id', verifyToken, mediaController.streamMedia);
+router.get('/stream/:id', optionalVerifyToken, mediaController.streamMedia);
 
 /**
  * @swagger
@@ -115,6 +115,6 @@ router.get('/stream/:id', verifyToken, mediaController.streamMedia);
  *       404:
  *         description: Cover not found
  */
-router.get('/stream/cover/:id', verifyToken, mediaController.streamCover);
+router.get('/stream/cover/:id', optionalVerifyToken, mediaController.streamCover);
 
 module.exports = router;

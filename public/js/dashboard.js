@@ -172,7 +172,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('document_number').value = data.user.document_number || '';
                 
                 if (data.user.avatar) {
-                    document.getElementById('avatarPreview').innerHTML = `<img src="/api/media/stream/cover/${data.user.avatar}?token=${token}" alt="Avatar">`;
+                    document.getElementById('avatarPreview').innerHTML = `<img src="${data.user.avatar}" alt="Avatar">`;
                 }
             }
         } catch (err) {

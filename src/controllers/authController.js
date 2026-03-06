@@ -2,6 +2,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const pool = require('../config/db');
 const crypto = require('crypto');
+const fs = require('fs');
 
 exports.login = async (req, res) => {
     const { username, password } = req.body;
@@ -78,9 +79,15 @@ exports.updateProfile = async (req, res) => {
 
         // Handle avatar upload if present
         if (req.files && req.files.avatar) {
-            const avatarPath = req.files.avatar[0].filename;
+            const avatarFile = req.files.avatar[0];
+            const bitmap = fs.readFileSync(avatarFile.path);
+            const base64Avatar = 'data:' + avatarFile.mimetype + ';base64,' + bitmap.toString('base64');
+            
             updateQuery += ', avatar=?';
-            queryParams.push(avatarPath);
+            queryParams.push(base64Avatar);
+            
+            // Delete temp file after reading
+            try { fs.unlinkSync(avatarFile.path); } catch (e) { console.error("Could not delete temp avatar", e); }
         }
 
         updateQuery += ' WHERE id=?';
