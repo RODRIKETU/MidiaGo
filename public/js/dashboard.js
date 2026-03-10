@@ -1,4 +1,10 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // Theme Initial Load
+    const savedTheme = localStorage.getItem('midiago_theme');
+    if (savedTheme === 'light') {
+        document.documentElement.classList.add('light-mode');
+    }
+
     // Check Auth
     const token = localStorage.getItem('midiago_token');
     const userStr = localStorage.getItem('midiago_user');
@@ -12,7 +18,14 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // UI Elements setup
     document.getElementById('welcomeText').textContent = `Olá, ${user.username}!`;
-    document.getElementById('userAvatar').textContent = user.username.charAt(0).toUpperCase();
+    // Top Nav Avatar Logic
+    if (user.avatar) {
+        document.getElementById('userAvatar').textContent = '';
+        document.getElementById('userAvatar').style.backgroundImage = `url(${user.avatar})`;
+    } else {
+        document.getElementById('userAvatar').textContent = user.username.charAt(0).toUpperCase();
+        document.getElementById('userAvatar').style.backgroundImage = 'none';
+    }
 
     // DOM Elements - UI Modes
     const gridBtn = document.getElementById('btnGridView');
@@ -42,16 +55,24 @@ document.addEventListener('DOMContentLoaded', () => {
     const closePlayerModalBtn = document.getElementById('closePlayerModal');
     const videoPlayer = document.getElementById('videoPlayer');
     
-    // Admin Panels
+    // Admin Panels & Settings
     const btnAdminPanel = document.getElementById('btnAdminPanel');
+    const btnSettingsPanel = document.getElementById('btnSettingsPanel');
     const adminContainer = document.getElementById('adminContainer');
     const pageTitleContainer = document.getElementById('pageTitleContainer');
     const pageTitleText = document.getElementById('pageTitleText');
     const pageSubtitleText = document.getElementById('pageSubtitleText');
     const editUserModal = document.getElementById('editUserModal');
     
+    // Settings Modal Items
+    const settingsModal = document.getElementById('settingsModal');
+    const closeSettingsModalBtn = document.getElementById('closeSettingsModal');
+    const cancelSettingsBtn = document.getElementById('cancelSettings');
+    const settingsForm = document.getElementById('settingsForm');
+    
     if (user.role === 'superadmin') {
         btnAdminPanel.classList.remove('hidden');
+        btnSettingsPanel.classList.remove('hidden');
     }
 
     const btnLogout = document.getElementById('btnLogout');
@@ -67,11 +88,68 @@ document.addEventListener('DOMContentLoaded', () => {
     initApp();
 
     async function initApp() {
+        await fetchSettings();
         await loadMedia();
         setupEventListeners();
     }
 
     // --- Core Functions ---
+    async function fetchSettings() {
+        try {
+            const res = await fetch('/api/settings');
+            const data = await res.json();
+            if (data.success && data.settings) {
+                const { favicon, background_image, cookie_text, cookie_policy_link, lgpd_text } = data.settings;
+                
+                // Set Theme/Favicon
+                if (favicon) {
+                    let link = document.querySelector("link[rel~='icon']");
+                    if (!link) {
+                        link = document.createElement('link');
+                        link.rel = 'icon';
+                        document.head.appendChild(link);
+                    }
+                    link.href = favicon;
+                }
+                
+                // Set Custom Background
+                if (background_image) {
+                    document.body.style.backgroundImage = `url('${background_image}')`;
+                    document.body.style.backgroundSize = 'cover';
+                    document.body.style.backgroundPosition = 'center';
+                    document.body.style.backgroundRepeat = 'no-repeat';
+                    document.body.style.backgroundAttachment = 'fixed';
+                }
+
+                // Populate settings form if superadmin
+                if (user.role === 'superadmin') {
+                    document.getElementById('lgpdText').value = lgpd_text || '';
+                    document.getElementById('cookieText').value = cookie_text || '';
+                    document.getElementById('cookiePolicyLink').value = cookie_policy_link || '';
+                }
+
+                // Cookie Banner
+                if (cookie_text && !localStorage.getItem('midiago_cookie_accepted')) {
+                    const banner = document.getElementById('cookieBanner');
+                    document.getElementById('cookieBannerText').textContent = cookie_text;
+                    if (cookie_policy_link) {
+                        document.getElementById('cookieBannerLink').href = cookie_policy_link;
+                    } else {
+                        document.getElementById('cookieBannerLink').style.display = 'none';
+                    }
+                    banner.classList.remove('hidden');
+
+                    document.getElementById('acceptCookiesBtn').addEventListener('click', () => {
+                        localStorage.setItem('midiago_cookie_accepted', 'true');
+                        banner.classList.add('hidden');
+                    });
+                }
+            }
+        } catch (e) {
+            console.error("Could not fetch settings", e);
+        }
+    }
+
     async function loadMedia() {
         document.getElementById('loadingIndicator').classList.remove('hidden');
         mediaContainer.innerHTML = '';
@@ -186,6 +264,34 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('editTitle').value = item.title;
         document.getElementById('editDescription').value = item.description || '';
         document.getElementById('editStatus').value = item.status;
+        
+        // Setup Previews
+        const isPrivate = item.status === 'private';
+        const streamUrl = `/api/media/stream/${item.id}${isPrivate ? '?token='+token : ''}`;
+        document.getElementById('editVideoPreview').src = streamUrl;
+        
+        const coverimg = document.getElementById('editCoverPreview');
+        const nocover = document.getElementById('editNoCoverText');
+        if (item.cover_filename) {
+            coverimg.src = `/api/media/stream/cover/${item.id}${isPrivate ? '?token='+token : ''}`;
+            coverimg.style.display = 'block';
+            nocover.style.display = 'none';
+        } else {
+            coverimg.style.display = 'none';
+            nocover.style.display = 'block';
+            coverimg.src = '';
+        }
+        
+        document.getElementById('editRemoveCover').checked = false;
+        
+        // Reset file inputs
+        document.getElementById('editVideoFile').value = '';
+        updateFileDisplay(document.getElementById('editVideoFile'), document.getElementById('editVideoFileMessage'), document.getElementById('dropAreaEditVideo'), 'vídeo');
+        document.getElementById('editCoverFile').value = '';
+        updateFileDisplay(document.getElementById('editCoverFile'), document.getElementById('editCoverFileMessage'), document.getElementById('dropAreaEditCover'), 'capa');
+        
+        document.getElementById('editProgressContainer').classList.add('hidden');
+        
         editMediaModal.classList.remove('hidden');
     }
 
@@ -214,37 +320,83 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
         const id = document.getElementById('editMediaId').value;
         const submitBtn = document.getElementById('submitEditMedia');
-        submitBtn.disabled = true;
-        submitBtn.textContent = 'Salvando...';
+        const cancelBtn = document.getElementById('cancelEditMedia');
+        const progressContainer = document.getElementById('editProgressContainer');
+        const progressBar = document.getElementById('editProgressBar');
+        const progressText = document.getElementById('editProgressText');
+        const statusText = document.getElementById('editStatusText');
 
-        const payload = {
-            title: document.getElementById('editTitle').value,
-            description: document.getElementById('editDescription').value,
-            status: document.getElementById('editStatus').value
-        };
+        submitBtn.disabled = true;
+        cancelBtn.disabled = true;
+        
+        const formData = new FormData(editMediaForm);
+        
+        // Check if there are files attached, if so we show progress
+        const hasVideo = document.getElementById('editVideoFile').files.length > 0;
+        const hasCover = document.getElementById('editCoverFile').files.length > 0;
+        
+        if (hasVideo || hasCover) {
+            progressContainer.classList.remove('hidden');
+            statusText.textContent = 'Enviando Alterações...';
+            progressBar.style.setProperty('--progress', `0%`);
+            progressText.textContent = `0%`;
+        } else {
+            submitBtn.textContent = 'Salvando...';
+        }
 
         try {
-            const response = await fetch(`/api/media/${id}`, {
-                method: 'PUT',
-                headers: { 
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(payload)
-            });
-            const data = await response.json();
+            const xhr = new XMLHttpRequest();
             
-            if (response.ok && data.success) {
-                editMediaModal.classList.add('hidden');
-                loadMedia();
-            } else {
-                alert('Erro: ' + (data.message || 'Falha ao editar.'));
-            }
+            xhr.upload.addEventListener('progress', (e) => {
+                if (e.lengthComputable && (hasVideo || hasCover)) {
+                    const percentComplete = Math.round((e.loaded / e.total) * 100);
+                    progressBar.style.setProperty('--progress', `${percentComplete}%`);
+                    progressText.textContent = `${percentComplete}%`;
+
+                    if (percentComplete >= 100) {
+                        statusText.textContent = 'Processando no Servidor...';
+                        progressBar.style.setProperty('--progress', `100%`);
+                        progressText.textContent = `Aguarde`;
+                    }
+                }
+            });
+
+            xhr.addEventListener('load', async () => {
+                if (xhr.status === 200) {
+                    const data = JSON.parse(xhr.responseText);
+                    if (data.success) {
+                        if (hasVideo || hasCover) statusText.textContent = 'Sucesso!';
+                        setTimeout(() => {
+                            editMediaModal.classList.add('hidden');
+                            document.getElementById('editVideoPreview').src = ''; // stop playing
+                            loadMedia();
+                        }, (hasVideo || hasCover) ? 1000 : 0);
+                    } else {
+                        alert('Erro: ' + (data.message || 'Falha ao editar.'));
+                    }
+                } else {
+                    alert('Erro na edição: ' + xhr.responseText);
+                }
+                submitBtn.disabled = false;
+                cancelBtn.disabled = false;
+                submitBtn.textContent = 'Salvar Alterações';
+            });
+
+            xhr.addEventListener('error', () => {
+                alert('Ocorreu um erro de rede durante a edição.');
+                submitBtn.disabled = false;
+                cancelBtn.disabled = false;
+                submitBtn.textContent = 'Salvar Alterações';
+            });
+
+            xhr.open('PUT', `/api/media/${id}`, true);
+            xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+            xhr.send(formData);
+
         } catch (err) {
-            console.error('Edit error', err);
-            alert('Erro de conexão.');
-        } finally {
+            console.error('Edit form error:', err);
             submitBtn.disabled = false;
+            cancelBtn.disabled = false;
             submitBtn.textContent = 'Salvar Alterações';
         }
     });
@@ -313,11 +465,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('phone').value = data.user.phone || '';
                 document.getElementById('cep').value = data.user.cep || '';
                 document.getElementById('address').value = data.user.address || '';
+                document.getElementById('address_number').value = data.user.address_number || '';
+                document.getElementById('neighborhood').value = data.user.neighborhood || '';
+                document.getElementById('city').value = data.user.city || '';
+                document.getElementById('state').value = data.user.state || '';
                 document.getElementById('document_type').value = data.user.document_type || '';
                 document.getElementById('document_number').value = data.user.document_number || '';
                 
                 if (data.user.avatar) {
                     document.getElementById('avatarPreview').innerHTML = `<img src="${data.user.avatar}" alt="Avatar">`;
+                    // Update Top Nav Avatar immediately if it changed
+                    document.getElementById('userAvatar').textContent = '';
+                    document.getElementById('userAvatar').style.backgroundImage = `url(${data.user.avatar})`;
+                    // Update local storage so reload holds it
+                    let localUser = JSON.parse(localStorage.getItem('midiago_user'));
+                    if (localUser) {
+                        localUser.avatar = data.user.avatar;
+                        localStorage.setItem('midiago_user', JSON.stringify(localUser));
+                    }
                 }
 
                 if (data.user.role === 'cliente') {
@@ -417,7 +582,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
                 const data = await response.json();
                 if (!data.erro) {
-                    document.getElementById('address').value = `${data.logradouro}, , ${data.bairro}, ${data.localidade} - ${data.uf}`;
+                    document.getElementById('address').value = data.logradouro || '';
+                    document.getElementById('neighborhood').value = data.bairro || '';
+                    document.getElementById('city').value = data.localidade || '';
+                    document.getElementById('state').value = data.uf || '';
+                    document.getElementById('address_number').focus(); // Move focus to number after fetch
                 }
             } catch (err) {
                 console.error("ViaCEP error", err);
@@ -554,6 +723,17 @@ document.addEventListener('DOMContentLoaded', () => {
     setupDropArea(dropAreaVideo, fileInputVideo, fileMessageVideo, 'vídeo');
     // Setup Cover Drop
     setupDropArea(dropAreaCover, fileInputCover, fileMessageCover, 'capa');
+
+    // Setup Edit Drop Areas
+    const dropAreaEditVideo = document.getElementById('dropAreaEditVideo');
+    const fileInputEditVideo = document.getElementById('editVideoFile');
+    const fileMessageEditVideo = document.getElementById('editVideoFileMessage');
+    const dropAreaEditCover = document.getElementById('dropAreaEditCover');
+    const fileInputEditCover = document.getElementById('editCoverFile');
+    const fileMessageEditCover = document.getElementById('editCoverFileMessage');
+
+    setupDropArea(dropAreaEditVideo, fileInputEditVideo, fileMessageEditVideo, 'vídeo');
+    setupDropArea(dropAreaEditCover, fileInputEditCover, fileMessageEditCover, 'capa');
 
     function setupDropArea(area, input, messageEl, typeName) {
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
@@ -704,8 +884,14 @@ document.addEventListener('DOMContentLoaded', () => {
         cancelUploadBtn.addEventListener('click', () => uploadModal.classList.add('hidden'));
 
         // Edit Modal Events
-        closeEditMediaModalBtn.addEventListener('click', () => editMediaModal.classList.add('hidden'));
-        cancelEditMediaBtn.addEventListener('click', () => editMediaModal.classList.add('hidden'));
+        closeEditMediaModalBtn.addEventListener('click', () => {
+            editMediaModal.classList.add('hidden');
+            document.getElementById('editVideoPreview').src = '';
+        });
+        cancelEditMediaBtn.addEventListener('click', () => {
+            editMediaModal.classList.add('hidden');
+            document.getElementById('editVideoPreview').src = '';
+        });
 
         // Profile Modal
         btnProfileModal.addEventListener('click', (e) => {
@@ -713,6 +899,17 @@ document.addEventListener('DOMContentLoaded', () => {
             fetchProfile(); // refresh data
             profileModal.classList.remove('hidden');
         });
+        
+        // Top Nav Profile Link
+        const topNavProfileLink = document.getElementById('topNavProfileLink');
+        if (topNavProfileLink) {
+            topNavProfileLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                fetchProfile();
+                profileModal.classList.remove('hidden');
+            });
+        }
+        
         closeProfileModalBtn.addEventListener('click', () => profileModal.classList.add('hidden'));
 
         // Admin Edit User Modal
@@ -927,5 +1124,67 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+        // Settings Panel Toggle
+        if (btnSettingsPanel) {
+            btnSettingsPanel.addEventListener('click', (e) => {
+                e.preventDefault();
+                settingsModal.classList.remove('hidden');
+            });
+        }
+        
+        if (closeSettingsModalBtn) closeSettingsModalBtn.addEventListener('click', () => settingsModal.classList.add('hidden'));
+        if (cancelSettingsBtn) cancelSettingsBtn.addEventListener('click', () => settingsModal.classList.add('hidden'));
+
+        if (settingsForm) {
+            settingsForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const submitBtn = document.getElementById('submitSettingsBtn');
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Salvando...';
+
+                const formData = new FormData(settingsForm);
+
+                try {
+                    const response = await fetch('/api/settings', {
+                        method: 'PUT',
+                        headers: { 'Authorization': `Bearer ${token}` },
+                        body: formData
+                    });
+
+                    const data = await response.json();
+                    if (response.ok && data.success) {
+                        alert('Configurações salvas com sucesso!');
+                        settingsModal.classList.add('hidden');
+                        fetchSettings(); // refresh current display
+                    } else {
+                        alert('Erro ao salvar configurações.');
+                    }
+                } catch (error) {
+                    console.error("Settings error:", error);
+                    alert("Erro de conexão ao salvar configurações.");
+                } finally {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Salvar Configurações';
+                }
+            });
+        }
+
+        // Theme Toggle Binding
+        const themeBtn = document.getElementById('themeToggleBtn');
+        if (themeBtn) {
+            themeBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation(); // Prevents click from opening the profile modal in the parent container
+                const root = document.documentElement;
+                if (root.classList.contains('light-mode')) {
+                    root.classList.remove('light-mode');
+                    localStorage.setItem('midiago_theme', 'dark');
+                } else {
+                    root.classList.add('light-mode');
+                    localStorage.setItem('midiago_theme', 'light');
+                }
+            });
+        }
 
 });

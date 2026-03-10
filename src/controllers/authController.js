@@ -122,7 +122,7 @@ exports.subscribe = async (req, res) => {
 
 exports.getProfile = async (req, res) => {
     try {
-        const [users] = await pool.query('SELECT id, username, role, avatar, email, phone, cep, address, document_type, document_number, personal_token, created_at FROM users WHERE id = ?', [req.user.id]);
+        const [users] = await pool.query('SELECT id, username, role, avatar, email, phone, cep, address, address_number, neighborhood, city, state, document_type, document_number, personal_token, created_at FROM users WHERE id = ?', [req.user.id]);
         if (users.length === 0) {
             return res.status(404).json({ success: false, message: 'User not found' });
         }
@@ -149,22 +149,38 @@ exports.generateToken = async (req, res) => {
 
 exports.updateProfile = async (req, res) => {
     try {
-        const { email, phone, cep, address, document_type, document_number } = req.body;
+        const { email, phone, cep, address, address_number, neighborhood, city, state, document_type, document_number } = req.body;
         
-        let updateQuery = 'UPDATE users SET email=?, phone=?, cep=?, address=?, document_type=?, document_number=?';
-        let queryParams = [email || null, phone || null, cep || null, address || null, document_type || null, document_number || null];
+        let updateQuery = 'UPDATE users SET email=?, phone=?, cep=?, address=?, address_number=?, neighborhood=?, city=?, state=?, document_type=?, document_number=?';
+        let queryParams = [
+            email || null, 
+            phone || null, 
+            cep || null, 
+            address || null, 
+            address_number || null, 
+            neighborhood || null, 
+            city || null, 
+            state || null, 
+            document_type || null, 
+            document_number || null
+        ];
 
         // Handle avatar upload if present
         if (req.files && req.files.avatar) {
-            const avatarFile = req.files.avatar[0];
-            const bitmap = fs.readFileSync(avatarFile.path);
-            const base64Avatar = 'data:' + avatarFile.mimetype + ';base64,' + bitmap.toString('base64');
-            
-            updateQuery += ', avatar=?';
-            queryParams.push(base64Avatar);
-            
-            // Delete temp file after reading
-            try { fs.unlinkSync(avatarFile.path); } catch (e) { console.error("Could not delete temp avatar", e); }
+            let base64Avatar;
+            try {
+                const avatarFile = req.files.avatar[0];
+                const bitmap = fs.readFileSync(avatarFile.path);
+                base64Avatar = 'data:' + avatarFile.mimetype + ';base64,' + bitmap.toString('base64');
+                try { fs.unlinkSync(avatarFile.path); } catch (e) { console.error("Could not delete temp avatar", e); }
+            } catch (e) {
+                console.error("Error reading file", e);
+            }
+
+            if (base64Avatar) {
+                updateQuery += ', avatar=?';
+                queryParams.push(base64Avatar);
+            }
         }
 
         updateQuery += ' WHERE id=?';
@@ -173,7 +189,7 @@ exports.updateProfile = async (req, res) => {
         await pool.query(updateQuery, queryParams);
         
         // Fetch updated user to return
-        const [users] = await pool.query('SELECT id, username, role, avatar, email, phone, cep, address, document_type, document_number, personal_token, created_at FROM users WHERE id = ?', [req.user.id]);
+        const [users] = await pool.query('SELECT id, username, role, avatar, email, phone, cep, address, address_number, neighborhood, city, state, document_type, document_number, personal_token, created_at FROM users WHERE id = ?', [req.user.id]);
         
         res.json({ success: true, message: 'Profile updated successfully', user: users[0] });
 

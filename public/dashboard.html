@@ -36,6 +36,10 @@
                     <ion-icon name="people-outline"></ion-icon>
                     <span>Usuários</span>
                 </a>
+                <a href="#" class="nav-item hidden" id="btnSettingsPanel">
+                    <ion-icon name="settings-outline"></ion-icon>
+                    <span>Configurações</span>
+                </a>
                 <a href="#" class="nav-item" id="btnLogout">
                     <ion-icon name="log-out-outline"></ion-icon>
                     <span>Sair</span>
@@ -51,9 +55,12 @@
                     <input type="text" id="searchInput" placeholder="Pesquisar mídia...">
                 </div>
                 
-                <div class="user-info">
+                <div class="user-info" style="cursor: pointer;" id="topNavProfileLink" title="Meu Perfil">
+                    <button id="themeToggleBtn" class="btn-icon" title="Alternar Tema" style="margin-right: 0.5rem; border: none; background: transparent;">
+                        <ion-icon name="sunny-outline"></ion-icon>
+                    </button>
                     <span id="welcomeText">Olá!</span>
-                    <div class="avatar" id="userAvatar">U</div>
+                    <div class="avatar" id="userAvatar" style="background-size: cover; background-position: center;">U</div>
                 </div>
             </header>
 
@@ -225,7 +232,7 @@
 
     <!-- Edit Media Modal -->
     <div id="editMediaModal" class="modal-overlay hidden">
-        <div class="modal-content">
+        <div class="modal-content" style="max-height: 90vh; overflow-y: auto;">
             <div class="modal-header">
                 <h2>Editar Mídia</h2>
                 <button class="close-btn" id="closeEditMediaModal">
@@ -233,7 +240,7 @@
                 </button>
             </div>
             <div class="modal-body">
-                <form id="editMediaForm">
+                <form id="editMediaForm" enctype="multipart/form-data">
                     <input type="hidden" id="editMediaId" name="id">
                     
                     <div class="input-group">
@@ -255,8 +262,47 @@
                             </select>
                         </div>
                     </div>
+                    
+                    <div class="input-group">
+                        <label>Vídeo Atual (Pré-visualização)</label>
+                        <div class="video-preview-container" style="margin-bottom: 1rem; border-radius: 8px; overflow: hidden; background: #000;">
+                            <video id="editVideoPreview" controls controlsList="nodownload" oncontextmenu="return false;" style="width: 100%; max-height: 250px; display: block;"></video>
+                        </div>
+                        <label>Substituir Arquivo de Vídeo (Opcional)</label>
+                        <div class="file-drop-area" id="dropAreaEditVideo">
+                            <ion-icon name="videocam-outline"></ion-icon>
+                            <span class="file-message" id="editVideoFileMessage">Arraste um novo vídeo completo para substituir o atual</span>
+                            <input class="file-input" type="file" id="editVideoFile" name="video" accept="video/mp4,video/mkv,video/webm">
+                        </div>
+                    </div>
 
-                    <div class="modal-footer">
+                    <div class="input-group">
+                        <label>Capa Atual</label>
+                        <div id="editCoverPreviewContainer" style="margin-bottom: 1rem; border-radius: 8px; overflow: hidden; background: var(--bg-tertiary); display: flex; align-items: center; justify-content: center; min-height: 100px;">
+                            <img id="editCoverPreview" style="max-width: 100%; max-height: 200px; display: none; border-radius: 8px; object-fit: cover;">
+                            <span id="editNoCoverText" style="color: var(--text-secondary); display: none;">Sem capa atual</span>
+                        </div>
+                        <label>Substituir Capa (Opcional)</label>
+                        <div class="file-drop-area" id="dropAreaEditCover">
+                            <ion-icon name="image-outline"></ion-icon>
+                            <span class="file-message" id="editCoverFileMessage">Arraste uma nova capa para substituir a atual</span>
+                            <input class="file-input" type="file" id="editCoverFile" name="cover" accept="image/jpeg,image/png,image/webp">
+                        </div>
+                        <div style="margin-top: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                            <input type="checkbox" id="editRemoveCover" name="remove_cover" value="true">
+                            <label for="editRemoveCover" style="margin-bottom: 0; cursor: pointer; color: var(--danger);">Remover capa atual (sem enviar nova)</label>
+                        </div>
+                    </div>
+
+                    <div id="editProgressContainer" class="progress-bar-container hidden">
+                        <div class="progress-details">
+                            <span id="editStatusText">Enviando Alterações...</span>
+                            <span id="editProgressText">0%</span>
+                        </div>
+                        <div id="editProgressBar" class="progress-bar"></div>
+                    </div>
+
+                    <div class="modal-footer" style="margin-top: 1.5rem;">
                         <button type="button" class="btn btn-secondary" id="cancelEditMedia">Cancelar</button>
                         <button type="submit" class="btn btn-primary" id="submitEditMedia">Salvar Alterações</button>
                     </div>
@@ -369,8 +415,30 @@
                             <input type="text" id="cep" name="cep" placeholder="00000-000" maxlength="9">
                         </div>
                         <div class="input-group address-group">
-                            <label for="address">Endereço Completo</label>
-                            <input type="text" id="address" name="address" placeholder="Rua, Número, Bairro, Cidade - UF">
+                            <label for="address">Logradouro (Rua)</label>
+                            <input type="text" id="address" name="address" placeholder="Av. Paulista">
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="input-group">
+                            <label for="address_number">Número</label>
+                            <input type="text" id="address_number" name="address_number" placeholder="1000">
+                        </div>
+                        <div class="input-group">
+                            <label for="neighborhood">Bairro</label>
+                            <input type="text" id="neighborhood" name="neighborhood" placeholder="Bela Vista">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="input-group">
+                            <label for="city">Cidade</label>
+                            <input type="text" id="city" name="city" placeholder="São Paulo">
+                        </div>
+                        <div class="input-group">
+                            <label for="state">Estado (UF)</label>
+                            <input type="text" id="state" name="state" placeholder="SP" maxlength="2" style="text-transform: uppercase;">
                         </div>
                     </div>
 
@@ -428,6 +496,62 @@
                 </div>
             </div>
         </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Configurações da Plataforma</h2>
+                <button class="close-btn" id="closeSettingsModal">
+                    <ion-icon name="close-outline"></ion-icon>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="settingsForm" enctype="multipart/form-data">
+                    <div class="input-group">
+                        <label for="faviconFile">Logomarca Favicon (Opcional)</label>
+                        <input type="file" id="faviconFile" name="favicon" accept="image/png,image/x-icon,image/svg+xml" class="file-input-simple">
+                        <small style="color:var(--text-secondary)">Envie para atualizar o ícone da guia do navegador.</small>
+                    </div>
+
+                    <div class="input-group" style="margin-top: 1rem;">
+                        <label for="backgroundFile">Plano de Fundo da Plataforma (Opcional)</label>
+                        <input type="file" id="backgroundFile" name="background" accept="image/*" class="file-input-simple">
+                        <small style="color:var(--text-secondary)">Envie uma imagem para alterar o fundo de tela principal da plataforma.</small>
+                    </div>
+                    
+                    <div class="input-group" style="margin-top: 1rem;">
+                        <label for="lgpdText">Texto da LGPD (Login)</label>
+                        <textarea id="lgpdText" name="lgpd_text" rows="3" placeholder="Insira a mensagem que aparece na tela de Login"></textarea>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="cookieText">Mensagem do Banner de Cookies</label>
+                        <textarea id="cookieText" name="cookie_text" rows="3" placeholder="Aviso de que o site utiliza cookies."></textarea>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="cookiePolicyLink">Link da Política de Privacidade/Cookies</label>
+                        <input type="text" id="cookiePolicyLink" name="cookie_policy_link" placeholder="Ex: /politica-de-privacidade">
+                    </div>
+
+                    <div class="modal-footer" style="margin-top: 1.5rem;">
+                        <button type="button" class="btn btn-outline" id="cancelSettings">Cancelar</button>
+                        <button type="submit" class="btn btn-primary" id="submitSettingsBtn">Salvar Configurações</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cookie Banner -->
+    <div id="cookieBanner" class="cookie-banner hidden" style="position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 800px; background: var(--panel-bg); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; display: flex; align-items: center; justify-content: space-between; gap: 1.5rem; z-index: 9999; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
+        <div>
+            <p id="cookieBannerText" style="margin-bottom: 0.5rem; font-size: 0.95rem; color: var(--text-primary);">Nós utilizamos cookies para melhorar sua experiência em nosso site.</p>
+            <a id="cookieBannerLink" href="#" target="_blank" style="color: var(--primary); font-size: 0.85rem; text-decoration: none;">Leia nossa Política de Cookies</a>
+        </div>
+        <button id="acceptCookiesBtn" class="btn btn-primary" style="white-space: nowrap;">Concordo e Fechar</button>
     </div>
 
     <script src="js/dashboard.js"></script>

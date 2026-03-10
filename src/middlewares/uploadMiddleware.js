@@ -26,7 +26,7 @@ const fileFilter = (req, file, cb) => {
         } else {
             cb(new Error('Only video files are allowed for the video field!'), false);
         }
-    } else if (file.fieldname === 'cover' || file.fieldname === 'avatar') {
+    } else if (file.fieldname === 'cover' || file.fieldname === 'avatar' || file.fieldname === 'favicon' || file.fieldname === 'background') {
         if (file.mimetype.startsWith('image/')) {
             cb(null, true);
         } else {
@@ -46,7 +46,8 @@ const upload = multer({
 }).fields([
     { name: 'video', maxCount: 1 },
     { name: 'cover', maxCount: 1 },
-    { name: 'avatar', maxCount: 1 }
+    { name: 'avatar', maxCount: 1 },
+    { name: 'favicon', maxCount: 1 }
 ]);
 
 module.exports = upload;

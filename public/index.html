@@ -10,9 +10,14 @@
 <body class="login-body">
     <div class="login-container">
         <div class="glass-panel">
-            <div class="logo-container">
-                <div class="logo-icon"></div>
-                <h1>MidiaGo</h1>
+            <div class="logo-container" style="justify-content: space-between;">
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <div class="logo-icon"></div>
+                    <h1>MidiaGo</h1>
+                </div>
+                <button id="themeToggleBtn" class="btn-icon" title="Alternar Tema" style="border: none; background: transparent; color: var(--text-primary);">
+                    <ion-icon name="sunny-outline"></ion-icon>
+                </button>
             </div>
             <p class="subtitle" id="formSubtitle">Bem-vindo ao portal de mídia empresarial.</p>
             
@@ -39,8 +44,24 @@
                 </div>
             </form>
         </div>
+        </div>
+        
+        <div id="lgpdTextContainer" style="margin-top: 1.5rem; text-align: center; color: var(--text-secondary); font-size: 0.8rem; max-width: 400px;">
+            <!-- LGPD Text will be injected here via JS -->
+        </div>
     </div>
     
+    <!-- Cookie Banner -->
+    <div id="cookieBanner" class="cookie-banner hidden" style="position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 800px; background: var(--panel-bg); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; display: flex; align-items: center; justify-content: space-between; gap: 1.5rem; z-index: 9999; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
+        <div>
+            <p id="cookieBannerText" style="margin-bottom: 0.5rem; font-size: 0.95rem; color: var(--text-primary);">Nós utilizamos cookies para melhorar sua experiência em nosso site.</p>
+            <a id="cookieBannerLink" href="#" target="_blank" style="color: var(--primary); font-size: 0.85rem; text-decoration: none;">Leia nossa Política de Cookies</a>
+        </div>
+        <button id="acceptCookiesBtn" class="btn btn-primary" style="white-space: nowrap;">Concordo e Fechar</button>
+    </div>
+    
+    <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
+    <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
     <script src="js/auth.js"></script>
 </body>
 </html>

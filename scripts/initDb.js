@@ -34,6 +34,10 @@ async function initDB() {
                 phone VARCHAR(20) NULL,
                 cep VARCHAR(10) NULL,
                 address TEXT NULL,
+                address_number VARCHAR(20) NULL,
+                neighborhood VARCHAR(100) NULL,
+                city VARCHAR(100) NULL,
+                state VARCHAR(2) NULL,
                 document_type ENUM('CPF', 'CNPJ') NULL,
                 document_number VARCHAR(20) NULL,
                 personal_token VARCHAR(255) UNIQUE NULL,
@@ -43,13 +47,51 @@ async function initDB() {
         `);
 
         // Graceful update for existing databases
-        console.log(`Checking for video_quota column...`);
+        console.log(`Checking for newer columns (video_quota, address fields)...`);
+        const columnsToAdd = [
+            'video_quota INT DEFAULT 10',
+            'address_number VARCHAR(20) NULL',
+            'neighborhood VARCHAR(100) NULL',
+            'city VARCHAR(100) NULL',
+            'state VARCHAR(2) NULL'
+        ];
+        
+        for (const colDef of columnsToAdd) {
+            try {
+                await connection.query(`ALTER TABLE users ADD COLUMN ${colDef}`);
+                console.log(`Added column ${colDef.split(' ')[0]} to users table.`);
+            } catch (e) {
+                // Error means column exists, which is fine
+            }
+        }
+
+        console.log(`Creating settings table...`);
+        await connection.query(`
+            CREATE TABLE IF NOT EXISTS settings (
+                id INT PRIMARY KEY DEFAULT 1,
+                favicon LONGTEXT NULL,
+                background_image LONGTEXT NULL,
+                lgpd_text TEXT NULL,
+                cookie_text TEXT NULL,
+                cookie_policy_link VARCHAR(255) NULL,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                CHECK (id = 1)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        `);
+
+        console.log(`Checking for newer columns in settings (background_image)...`);
         try {
-            await connection.query(`ALTER TABLE users ADD COLUMN video_quota INT DEFAULT 10`);
-            console.log("Added video_quota to users table.");
+            await connection.query(`ALTER TABLE settings ADD COLUMN background_image LONGTEXT NULL AFTER favicon`);
+            console.log(`Added column background_image to settings table.`);
         } catch (e) {
             // Error means column exists, which is fine
         }
+
+        // Insert initial settings if none exist
+        await connection.query(`
+            INSERT IGNORE INTO settings (id, lgpd_text, cookie_text, cookie_policy_link) 
+            VALUES (1, 'Nós respeitamos sua privacidade de acordo com a LGPD.', 'Usamos cookies para melhorar sua experiência.', '/privacy-policy')
+        `);
 
         console.log(`Creating media table...`);
         await connection.query(`

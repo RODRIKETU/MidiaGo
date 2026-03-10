@@ -112,7 +112,7 @@ router.get('/list', verifyToken, mediaController.listMedia);
  *       403:
  *         description: Not owner or superadmin
  */
-router.put('/:id', verifyToken, mediaController.updateMedia);
+router.put('/:id', verifyToken, upload, mediaController.updateMedia);
 router.delete('/:id', verifyToken, mediaController.deleteMedia);
 
 /**

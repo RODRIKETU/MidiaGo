@@ -210,10 +210,16 @@ exports.streamMedia = async (req, res) => {
 exports.updateMedia = async (req, res) => {
     try {
         const mediaId = req.params.id;
-        const { title, description, status } = req.body;
+        const { title, description, status, remove_cover } = req.body;
+        
+        const videoFile = req.files && req.files.video ? req.files.video[0] : null;
+        const coverFile = req.files && req.files.cover ? req.files.cover[0] : null;
 
         const [mediaRows] = await pool.query('SELECT * FROM media WHERE id = ?', [mediaId]);
         if (mediaRows.length === 0) {
+            // cleanup if files were uploaded but media not found
+            if (videoFile && fs.existsSync(videoFile.path)) fs.unlinkSync(videoFile.path);
+            if (coverFile && fs.existsSync(coverFile.path)) fs.unlinkSync(coverFile.path);
             return res.status(404).json({ success: false, message: 'Media not found.' });
         }
 
@@ -221,12 +227,45 @@ exports.updateMedia = async (req, res) => {
 
         // Access control: Only owner or superadmin can edit
         if (req.user.role !== 'superadmin' && media.uploaded_by !== req.user.id) {
+            if (videoFile && fs.existsSync(videoFile.path)) fs.unlinkSync(videoFile.path);
+            if (coverFile && fs.existsSync(coverFile.path)) fs.unlinkSync(coverFile.path);
             return res.status(403).json({ success: false, message: 'You do not have permission to edit this media.' });
+        }
+        
+        // Handle Video Replacement
+        let newFilename = media.filename;
+        let newOriginalName = media.original_name;
+        let newMimetype = media.mimetype;
+        let newSize = media.size;
+
+        if (videoFile) {
+            // Delete old video
+            const oldVideoPath = path.join(__dirname, '../../uploads', media.filename);
+            try { if (fs.existsSync(oldVideoPath)) fs.unlinkSync(oldVideoPath); } catch (e) { console.error("Could not delete old video file", e); }
+            
+            newFilename = videoFile.filename;
+            newOriginalName = videoFile.originalname;
+            newMimetype = videoFile.mimetype;
+            newSize = videoFile.size;
+        }
+
+        // Handle Cover Replacement or Removal
+        let newCoverFilename = media.cover_filename;
+        if (coverFile) {
+            if (media.cover_filename) {
+                const oldCoverPath = path.join(__dirname, '../../uploads', media.cover_filename);
+                try { if (fs.existsSync(oldCoverPath)) fs.unlinkSync(oldCoverPath); } catch (e) { console.error("Could not delete old cover file", e); }
+            }
+            newCoverFilename = coverFile.filename;
+        } else if (remove_cover === 'true' && media.cover_filename) {
+            const oldCoverPath = path.join(__dirname, '../../uploads', media.cover_filename);
+            try { if (fs.existsSync(oldCoverPath)) fs.unlinkSync(oldCoverPath); } catch (e) { console.error("Could not delete old cover file", e); }
+            newCoverFilename = null;
         }
 
         await pool.query(
-            'UPDATE media SET title=?, description=?, status=? WHERE id=?',
-            [title, description, status, mediaId]
+            'UPDATE media SET title=?, description=?, status=?, filename=?, original_name=?, cover_filename=?, mimetype=?, size=? WHERE id=?',
+            [title, description, status, newFilename, newOriginalName, newCoverFilename, newMimetype, newSize, mediaId]
         );
 
         res.json({ success: true, message: 'Media updated successfully' });
