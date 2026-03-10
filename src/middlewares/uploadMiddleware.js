@@ -47,7 +47,8 @@ const upload = multer({
     { name: 'video', maxCount: 1 },
     { name: 'cover', maxCount: 1 },
     { name: 'avatar', maxCount: 1 },
-    { name: 'favicon', maxCount: 1 }
+    { name: 'favicon', maxCount: 1 },
+    { name: 'background', maxCount: 1 }
 ]);
 
 module.exports = upload;
