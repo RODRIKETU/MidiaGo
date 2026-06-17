@@ -11,6 +11,10 @@ const options = {
     },
     servers: [
       {
+        url: 'https://midia.digmidia.com',
+        description: 'Production Server',
+      },
+      {
         url: 'http://localhost:3000',
         description: 'Development Server',
       },

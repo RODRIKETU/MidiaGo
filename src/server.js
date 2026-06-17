@@ -4,6 +4,7 @@ const cors = require('cors');
 const path = require('path');
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./config/swagger');
+const { initDB } = require('../scripts/initDb');
 
 const authRoutes = require('./routes/authRoutes');
 const mediaRoutes = require('./routes/mediaRoutes');
@@ -35,11 +36,15 @@ app.use('/api/media', mediaRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/settings', settingsRoutes);
 
-// Database initialization check/connection info 
-// (Handled by config/db.js pool creation, no explicit start required)
-
-// Start Server
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
-    console.log(`Swagger docs available at http://localhost:${PORT}/api-docs`);
-});
+// Initialize database then start server
+initDB()
+    .then(() => {
+        app.listen(PORT, () => {
+            console.log(`Server is running on port ${PORT}`);
+            console.log(`Swagger docs available at http://localhost:${PORT}/api-docs`);
+        });
+    })
+    .catch(err => {
+        console.error('Failed to initialize database, server will not start:', err);
+        process.exit(1);
+    });

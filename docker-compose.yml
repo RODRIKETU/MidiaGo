@@ -1,0 +1,128 @@
+version: "3.8"
+
+# =============================================================
+# MidiaGo — Stack para Portainer
+# Domínios:
+#   App:       midia.digmidia.com
+#   phpMyAdmin: phpmyadmin.midia.digmidia.com
+#
+# Pré-requisito: rede externa "traefik" já criada no Docker Host
+#   docker network create traefik
+# =============================================================
+
+services:
+
+  # -----------------------------------------------------------
+  # Aplicação Node.js
+  # -----------------------------------------------------------
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: midiago-app:latest
+    container_name: midiago-app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DB_HOST: db
+      DB_USER: root
+      DB_PASSWORD: "30mariafn@"
+      DB_NAME: midiago
+      JWT_SECRET: MidiaGoJwtSecret2024Prod
+    volumes:
+      - uploads_data:/app/uploads
+    networks:
+      - traefik
+      - internal
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik"
+      # Rota HTTPS
+      - "traefik.http.routers.midiago.rule=Host(`midia.digmidia.com`)"
+      - "traefik.http.routers.midiago.entrypoints=websecure"
+      - "traefik.http.routers.midiago.tls.certresolver=letsencrypt"
+      - "traefik.http.services.midiago.loadbalancer.server.port=3000"
+      # Rota HTTP → redireciona para HTTPS
+      - "traefik.http.routers.midiago-http.rule=Host(`midia.digmidia.com`)"
+      - "traefik.http.routers.midiago-http.entrypoints=web"
+      - "traefik.http.routers.midiago-http.middlewares=redirect-to-https"
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.permanent=true"
+
+  # -----------------------------------------------------------
+  # Banco de dados MySQL 8
+  # -----------------------------------------------------------
+  db:
+    image: mysql:8.0
+    container_name: midiago-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: "30mariafn@"
+      MYSQL_DATABASE: midiago
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "--password=30mariafn@"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # -----------------------------------------------------------
+  # phpMyAdmin
+  # -----------------------------------------------------------
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: midiago-phpmyadmin
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+      PMA_USER: root
+      PMA_PASSWORD: "30mariafn@"
+      MYSQL_ROOT_PASSWORD: "30mariafn@"
+      UPLOAD_LIMIT: 512M
+    networks:
+      - traefik
+      - internal
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik"
+      # Rota HTTPS
+      - "traefik.http.routers.midiago-pma.rule=Host(`phpmyadmin.midia.digmidia.com`)"
+      - "traefik.http.routers.midiago-pma.entrypoints=websecure"
+      - "traefik.http.routers.midiago-pma.tls.certresolver=letsencrypt"
+      - "traefik.http.services.midiago-pma.loadbalancer.server.port=80"
+      # Rota HTTP → redireciona para HTTPS
+      - "traefik.http.routers.midiago-pma-http.rule=Host(`phpmyadmin.midia.digmidia.com`)"
+      - "traefik.http.routers.midiago-pma-http.entrypoints=web"
+      - "traefik.http.routers.midiago-pma-http.middlewares=redirect-to-https"
+
+# -----------------------------------------------------------
+# Volumes persistentes
+# -----------------------------------------------------------
+volumes:
+  db_data:
+    name: midiago_db_data
+  uploads_data:
+    name: midiago_uploads_data
+
+# -----------------------------------------------------------
+# Redes
+# -----------------------------------------------------------
+networks:
+  traefik:
+    external: true
+    name: traefik
+  internal:
+    name: midiago_internal
+    driver: bridge

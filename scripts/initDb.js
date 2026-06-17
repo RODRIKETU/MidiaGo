@@ -1,28 +1,42 @@
 const mysql = require('mysql2/promise');
 const bcrypt = require('bcrypt');
-require('dotenv').config();
 
 const dbConfig = {
-    host: process.env.DB_HOST || 'localhost',
+    host: process.env.DB_HOST || 'db',
     user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || '',
+    password: process.env.DB_PASSWORD || '30mariafn@',
 };
 
 const DB_NAME = process.env.DB_NAME || 'midiago';
 
+async function waitForMySQL(retries = 15, delayMs = 4000) {
+    for (let i = 1; i <= retries; i++) {
+        try {
+            const conn = await mysql.createConnection(dbConfig);
+            await conn.end();
+            return;
+        } catch (e) {
+            console.log(`[initDb] MySQL não disponível (tentativa ${i}/${retries}), aguardando ${delayMs / 1000}s...`);
+            await new Promise(r => setTimeout(r, delayMs));
+        }
+    }
+    throw new Error('[initDb] MySQL não ficou disponível a tempo. Abortando.');
+}
+
 async function initDB() {
     let connection;
     try {
-        console.log(`Connecting to MySQL at ${dbConfig.host}...`);
+        await waitForMySQL();
+        console.log(`[initDb] Conectando ao MySQL em ${dbConfig.host}...`);
         connection = await mysql.createConnection(dbConfig);
 
-        console.log(`Creating database ${DB_NAME} if not exists...`);
+        console.log(`[initDb] Criando banco ${DB_NAME} se não existir...`);
         await connection.query(`CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\``);
         
-        console.log(`Using database ${DB_NAME}...`);
+        console.log(`[initDb] Usando banco ${DB_NAME}...`);
         await connection.query(`USE \`${DB_NAME}\``);
 
-        console.log(`Creating users table...`);
+        console.log(`[initDb] Criando/verificando tabela users...`);
         await connection.query(`
             CREATE TABLE IF NOT EXISTS users (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -47,7 +61,7 @@ async function initDB() {
         `);
 
         // Graceful update for existing databases
-        console.log(`Checking for newer columns (video_quota, address fields)...`);
+        console.log(`[initDb] Verificando colunas novas em users...`);
         const columnsToAdd = [
             'video_quota INT DEFAULT 10',
             'address_number VARCHAR(20) NULL',
@@ -59,13 +73,13 @@ async function initDB() {
         for (const colDef of columnsToAdd) {
             try {
                 await connection.query(`ALTER TABLE users ADD COLUMN ${colDef}`);
-                console.log(`Added column ${colDef.split(' ')[0]} to users table.`);
+                console.log(`[initDb] Coluna adicionada: ${colDef.split(' ')[0]}`);
             } catch (e) {
                 // Error means column exists, which is fine
             }
         }
 
-        console.log(`Creating settings table...`);
+        console.log(`[initDb] Criando/verificando tabela settings...`);
         await connection.query(`
             CREATE TABLE IF NOT EXISTS settings (
                 id INT PRIMARY KEY DEFAULT 1,
@@ -79,10 +93,10 @@ async function initDB() {
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
         `);
 
-        console.log(`Checking for newer columns in settings (background_image)...`);
+        console.log(`[initDb] Verificando colunas novas em settings...`);
         try {
             await connection.query(`ALTER TABLE settings ADD COLUMN background_image LONGTEXT NULL AFTER favicon`);
-            console.log(`Added column background_image to settings table.`);
+            console.log(`[initDb] Coluna background_image adicionada a settings.`);
         } catch (e) {
             // Error means column exists, which is fine
         }
@@ -93,7 +107,7 @@ async function initDB() {
             VALUES (1, 'Nós respeitamos sua privacidade de acordo com a LGPD.', 'Usamos cookies para melhorar sua experiência.', '/privacy-policy')
         `);
 
-        console.log(`Creating media table...`);
+        console.log(`[initDb] Criando/verificando tabela media...`);
         await connection.query(`
             CREATE TABLE IF NOT EXISTS media (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -111,7 +125,7 @@ async function initDB() {
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
         `);
 
-        console.log(`Creating media_views table...`);
+        console.log(`[initDb] Criando/verificando tabela media_views...`);
         await connection.query(`
             CREATE TABLE IF NOT EXISTS media_views (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -124,14 +138,14 @@ async function initDB() {
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
         `);
 
-        console.log(`Checking for default users...`);
+        console.log(`[initDb] Verificando usuários padrão...`);
         const [users] = await connection.query('SELECT * FROM users WHERE username IN (?, ?)', ['usuario', 'superadmin']);
         
         const existingUsers = users.map(u => u.username);
         const hashedPassword = await bcrypt.hash('123', 10);
         
         if (!existingUsers.includes('superadmin')) {
-            console.log(`Inserting default superadmin...`);
+            console.log(`[initDb] Inserindo superadmin padrão...`);
             await connection.query(
                 `INSERT INTO users (username, password, role) VALUES (?, ?, ?)`,
                 ['superadmin', hashedPassword, 'superadmin']
@@ -139,23 +153,31 @@ async function initDB() {
         }
 
         if (!existingUsers.includes('usuario')) {
-            console.log(`Inserting default usuario...`);
+            console.log(`[initDb] Inserindo usuario padrão...`);
             await connection.query(
                 `INSERT INTO users (username, password, role) VALUES (?, ?, ?)`,
                 ['usuario', hashedPassword, 'usuario']
             );
         }
 
-        console.log('Database initialization completed successfully!');
+        console.log('[initDb] Inicialização do banco concluída com sucesso!');
 
     } catch (error) {
-        console.error('Error initializing database:', error);
+        console.error('[initDb] Erro na inicialização do banco:', error);
+        throw error;
     } finally {
         if (connection) {
             await connection.end();
-            console.log('Database connection closed.');
         }
     }
 }
 
-initDB();
+module.exports = { initDB };
+
+// Permite execução direta: node scripts/initDb.js
+if (require.main === module) {
+    initDB().catch(err => {
+        console.error(err);
+        process.exit(1);
+    });
+}
