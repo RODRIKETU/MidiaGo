@@ -1,5 +1,3 @@
-version: "3.8"
-
 # =============================================================
 # MidiaGo — Stack para Portainer
 # Domínios:
@@ -44,6 +42,7 @@ services:
       # Rota HTTPS
       - "traefik.http.routers.midiago.rule=Host(`midia.digmidia.com`)"
       - "traefik.http.routers.midiago.entrypoints=websecure"
+      - "traefik.http.routers.midiago.tls=true"
       - "traefik.http.routers.midiago.tls.certresolver=letsencrypt"
       - "traefik.http.services.midiago.loadbalancer.server.port=3000"
       # Rota HTTP → redireciona para HTTPS
@@ -100,6 +99,7 @@ services:
       # Rota HTTPS
       - "traefik.http.routers.midiago-pma.rule=Host(`phpmyadmin.midia.digmidia.com`)"
       - "traefik.http.routers.midiago-pma.entrypoints=websecure"
+      - "traefik.http.routers.midiago-pma.tls=true"
       - "traefik.http.routers.midiago-pma.tls.certresolver=letsencrypt"
       - "traefik.http.services.midiago-pma.loadbalancer.server.port=80"
       # Rota HTTP → redireciona para HTTPS
