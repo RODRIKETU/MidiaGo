@@ -17,7 +17,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: midiago-app:latest
     container_name: midiago-app
     restart: unless-stopped
     depends_on:
